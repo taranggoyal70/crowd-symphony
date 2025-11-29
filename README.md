@@ -23,56 +23,228 @@ Control music with hand gestures! Be the conductor and control the volume for yo
 1. Scan the QR code from the conductor
 2. Choose your section (left or right)
 3. Press play
-4. Your volume is now controlled by the conductor!
 
-## 🛠️ Tech Stack
+---
 
-- **Frontend**: Next.js 16, React 19, TypeScript
-- **Styling**: Tailwind CSS, Framer Motion
-- **Real-time**: Socket.IO (WebSocket)
-- **Gesture Detection**: Camera + Motion Analysis
-- **QR Codes**: qrcode.react
+## ✨ **Features**
 
-## 📦 Installation
+### **🎛️ Conductor Mode**
+- **Hand Tracking** - MediaPipe-powered gesture detection
+- **Dual Control** - Left and right hand control separate sections
+- **Real-time Feedback** - See volume levels and connected users
+- **Professional UI** - Clean, modern dashboard
+- **QR Code Generation** - Easy audience joining
+
+### **📱 Audience Mode**
+- **4 Music Tracks** - Choose your favorite
+- **Bass Boost** - Automatic at 70%+ volume
+- **Special Effects:**
+  - 💥 Screen flash
+  - 🌊 Screen shake (85%+)
+  - ⚡ Strobe mode (90%+)
+  - 🎆 Particle explosions
+  - 📳 Phone vibration
+- **Section Selection** - Join left or right side
+
+### **🔥 Real-time Features**
+- **WebSocket Communication** - Instant updates
+- **Session Management** - Multiple concurrent sessions
+- **User Tracking** - See how many people are connected
+- **Auto-sync** - All phones respond together
+
+---
+
+## 🛠️ **Tech Stack**
+
+- **Frontend:** Next.js 15, React 19, TypeScript
+- **Styling:** Tailwind CSS, Framer Motion
+- **Hand Tracking:** MediaPipe Hands
+- **Audio:** Web Audio API
+- **Real-time:** Socket.IO
+- **QR Codes:** qrcode.react
+- **Icons:** Lucide React
+
+---
+
+## 🚀 **Quick Start**
+
+### **Prerequisites**
+- Node.js 18+
+- npm or yarn
+- Camera-enabled device (for conductor)
+- Same WiFi network for all devices
+
+### **Installation**
 
 ```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/crowd-symphony.git
+cd crowd-symphony
+
+# Install dependencies
 npm install
-```
 
-## 🎮 Running
-
-```bash
+# Start the development server
 npm run dev
 ```
 
-Open http://localhost:3000
+The app will be available at:
+- **Conductor:** http://localhost:3000/conductor
+- **Audience:** http://localhost:3000/audience
 
-## 🎯 How Gesture Detection Works
+---
 
-The conductor page uses your laptop camera to detect hand position:
-- Analyzes brightness in top vs bottom of frame
-- More brightness in top = hand is up = higher volume
-- Smooth transitions for natural control
-- Real-time broadcast to all connected audience members
+## 📖 **How to Use**
 
-## 🌐 Architecture
+### **Step 1: Start Conductor**
+1. Open `http://YOUR_IP:3000/conductor` on your computer
+2. Click "START" to enable camera
+3. Click "QR" to show the QR code
 
-- **Next.js App**: Runs on port 3000
-- **WebSocket Server**: Runs on port 3001
-- **Sessions**: Each conductor gets a unique session ID
-- **Real-time**: Volume changes broadcast instantly to all audience members
+### **Step 2: Join Audience**
+1. Scan QR code with phone camera
+2. Select section (Left or Right)
+3. Choose a music track
+4. Press "Drop It" to start
 
-## 📱 Mobile Friendly
+### **Step 3: Conduct!**
+- **Raise left hand** → Increase left section volume
+- **Raise right hand** → Increase right section volume
+- **70%+ volume** → Bass boost + effects activate
+- **90%+ volume** → FULL CHAOS MODE! 🔥
 
-The audience page is fully responsive and works great on phones!
+---
 
-## 🎨 Customization
+## 🎵 **Adding Your Own Music**
 
-- Change the music source in `app/audience/page.tsx`
-- Adjust gesture sensitivity in `app/conductor/page.tsx`
-- Modify colors in Tailwind config
+### **Method 1: Local Files**
+```bash
+# Add MP3 files to public/music/
+cp your-song.mp3 public/music/
 
-## 🔥 Future Ideas
+# Update app/audience/page.tsx
+{
+  name: "Your Song",
+  url: "/music/your-song.mp3"
+}
+```
+
+### **Method 2: Online URLs**
+```typescript
+{
+  name: "Your Song",
+  url: "https://example.com/song.mp3"
+}
+```
+
+See [HOW_TO_ADD_MUSIC.md](HOW_TO_ADD_MUSIC.md) for detailed instructions.
+
+---
+
+## 🌐 **Network Setup**
+
+### **Find Your Local IP**
+
+**Mac/Linux:**
+```bash
+ifconfig | grep "inet " | grep -v 127.0.0.1
+```
+
+**Windows:**
+```bash
+ipconfig
+```
+
+### **Update IP Address**
+
+Edit these files with your local IP:
+- `app/conductor/page.tsx` (line 30)
+- `app/audience/page.tsx` (line 54)
+
+```typescript
+const socketUrl = "http://YOUR_IP:3001";
+```
+
+---
+
+## 📁 **Project Structure**
+
+```
+crowd-symphony/
+├── app/
+│   ├── conductor/page.tsx    # Conductor interface
+│   ├── audience/page.tsx     # Audience interface
+│   ├── test/page.tsx         # Network test page
+│   └── globals.css           # Global styles
+├── public/
+│   └── music/                # Music files
+│       ├── dubstep.mp3
+│       └── orchestra.mp3
+├── server.js                 # WebSocket server
+├── package.json              # Dependencies
+└── README.md                 # This file
+```
+
+---
+
+## 🐛 **Troubleshooting**
+
+### **QR Code Not Working?**
+See [QR_CODE_TROUBLESHOOTING.md](QR_CODE_TROUBLESHOOTING.md)
+
+### **Volume Not Changing?**
+1. Check browser console for logs
+2. Ensure camera is started on conductor
+3. Verify same session ID on both devices
+4. Check WiFi connection
+
+### **Music Not Playing?**
+1. Press "Drop It" button on phone
+2. Check phone is not muted
+3. Verify music file exists in `/public/music/`
+
+---
+
+## 🎯 **Performance Tips**
+
+- Use MP3 files under 5MB for faster loading
+- Keep music bitrate at 128-192 kbps
+- Test on same WiFi network
+- Close other apps on phones for better performance
+
+---
+
+## 🤝 **Contributing**
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+## 📝 **License**
+
+MIT License - feel free to use this project for any purpose!
+
+---
+
+## 🙏 **Credits**
+
+- **MediaPipe** - Hand tracking technology
+- **Socket.IO** - Real-time communication
+- **Next.js** - React framework
+- **Tailwind CSS** - Styling
+- **Framer Motion** - Animations
+
+---
+
+## 📧 **Contact**
+
+Have questions or suggestions? Open an issue on GitHub!
+
+---
+
+**Made with ❤️ for interactive music experiences**
+
+🎵 **Drop the beat, control the crowd!** 🎵
 
 - Multiple music tracks
 - Tempo control with gestures
