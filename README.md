@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎵 Crowd Symphony
 
-## Getting Started
+Control music with hand gestures! Be the conductor and control the volume for your entire audience in real-time.
 
-First, run the development server:
+## ✨ Features
+
+- **Conductor Mode**: Use your laptop camera to detect hand gestures
+- **Audience Mode**: Join via QR code and let the conductor control your volume
+- **Real-time Sync**: WebSocket-powered instant volume changes
+- **Left/Right Sections**: Divide your audience into sections
+- **Beautiful UI**: Gradient animations and smooth transitions
+
+## 🚀 How It Works
+
+### For Conductors:
+1. Open the app and click "Be the Conductor"
+2. Allow camera access
+3. Share the QR code with your audience
+4. Move your hands up = volume increases
+5. Move your hands down = volume decreases
+
+### For Audience:
+1. Scan the QR code from the conductor
+2. Choose your section (left or right)
+3. Press play
+4. Your volume is now controlled by the conductor!
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 16, React 19, TypeScript
+- **Styling**: Tailwind CSS, Framer Motion
+- **Real-time**: Socket.IO (WebSocket)
+- **Gesture Detection**: Camera + Motion Analysis
+- **QR Codes**: qrcode.react
+
+## 📦 Installation
+
+```bash
+npm install
+```
+
+## 🎮 Running
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🎯 How Gesture Detection Works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The conductor page uses your laptop camera to detect hand position:
+- Analyzes brightness in top vs bottom of frame
+- More brightness in top = hand is up = higher volume
+- Smooth transitions for natural control
+- Real-time broadcast to all connected audience members
 
-## Learn More
+## 🌐 Architecture
 
-To learn more about Next.js, take a look at the following resources:
+- **Next.js App**: Runs on port 3000
+- **WebSocket Server**: Runs on port 3001
+- **Sessions**: Each conductor gets a unique session ID
+- **Real-time**: Volume changes broadcast instantly to all audience members
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📱 Mobile Friendly
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The audience page is fully responsive and works great on phones!
 
-## Deploy on Vercel
+## 🎨 Customization
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Change the music source in `app/audience/page.tsx`
+- Adjust gesture sensitivity in `app/conductor/page.tsx`
+- Modify colors in Tailwind config
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🔥 Future Ideas
+
+- Multiple music tracks
+- Tempo control with gestures
+- Sound effects
+- Recording sessions
+- Leaderboards
+- Team mode
+
+---
+
+Built with ❤️ for interactive music experiences
