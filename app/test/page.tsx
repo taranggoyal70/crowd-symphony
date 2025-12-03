@@ -17,7 +17,7 @@ export default function TestPage() {
             ✓ Server: Running
           </p>
           <p className="text-green-800 font-semibold">
-            ✓ IP: 10.0.0.191
+            ✓ IP: 192.168.1.89
           </p>
         </div>
         <p className="text-sm text-gray-500">

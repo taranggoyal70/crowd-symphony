@@ -48,14 +48,16 @@ function AudienceContent() {
   const gainNodeRef = useRef<GainNode | null>(null);
   const bassNodeRef = useRef<BiquadFilterNode | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const pannerNodeRef = useRef<StereoPannerNode | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const waveAnimationRef = useRef<number | null>(null);
 
   // Initialize Socket.IO
   useEffect(() => {
     if (!sessionId || !section) return;
 
     // Use local IP for mobile connection
-    const socketUrl = "http://10.0.0.191:3001";
+    const socketUrl = "http://192.168.1.89:3001";
     socketRef.current = io(socketUrl, {
       query: { role: "audience", sessionId, section }
     });
@@ -168,11 +170,65 @@ function AudienceContent() {
     bassNode.frequency.value = 200;
     bassNode.gain.value = 0;
 
-    // Connect: source -> bass -> gain -> destination
+    // 🌊 STEREO PANNER for 8D effect
+    const pannerNode = audioContext.createStereoPanner();
+    pannerNodeRef.current = pannerNode;
+    // Left side = -1, Right side = +1
+    pannerNode.pan.value = section === "left" ? -0.8 : 0.8;
+
+    // Connect: source -> bass -> gain -> panner -> destination
     source.connect(bassNode);
     bassNode.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(pannerNode);
+    pannerNode.connect(audioContext.destination);
+
+    // 🌊 Start wave animation for 8D effect
+    startWaveEffect();
   };
+
+  // 🌊 8D Wave Effect - Sound travels between left and right
+  const startWaveEffect = () => {
+    if (!pannerNodeRef.current || !audioContextRef.current) return;
+
+    let time = 0;
+    const animate = () => {
+      if (!pannerNodeRef.current || !audioContextRef.current || !isPlaying) return;
+
+      time += 0.02;
+
+      // Create wave pattern based on volume
+      const waveIntensity = volume / 100;
+      
+      // Base position: left = -0.8, right = +0.8
+      const basePosition = section === "left" ? -0.8 : 0.8;
+      
+      // Wave oscillation - creates the traveling effect
+      // Higher volume = more dramatic wave
+      const waveOffset = Math.sin(time) * 0.4 * waveIntensity;
+      
+      // Apply smooth panning
+      const targetPan = basePosition + waveOffset;
+      pannerNodeRef.current.pan.setTargetAtTime(
+        targetPan,
+        audioContextRef.current.currentTime,
+        0.1
+      );
+
+      waveAnimationRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+  };
+
+  // Stop wave effect when paused
+  useEffect(() => {
+    if (!isPlaying && waveAnimationRef.current) {
+      cancelAnimationFrame(waveAnimationRef.current);
+      waveAnimationRef.current = null;
+    } else if (isPlaying && pannerNodeRef.current) {
+      startWaveEffect();
+    }
+  }, [isPlaying]);
 
   const selectSection = (selectedSection: "left" | "right") => {
     setSection(selectedSection);
@@ -366,59 +422,129 @@ function AudienceContent() {
         {/* Main Player */}
         <div className={`bg-gradient-to-br ${sectionColor} p-1 rounded-3xl shadow-2xl ${sectionGlow} shadow-2xl`}>
           <div className="bg-black rounded-3xl p-8">
-            {/* Volume Display */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-white font-bold text-lg uppercase tracking-wider">Volume</span>
-                <motion.span 
-                  className={`text-5xl font-bold ${section === "left" ? "text-green-400" : "text-purple-400"}`}
-                  animate={{ scale: bassBoost ? [1, 1.2, 1] : 1 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {volume}%
-                </motion.span>
-              </div>
-              <div className="h-8 bg-gray-800 rounded-full overflow-hidden relative">
+            {/* Magic Wand Visualization */}
+            <div className="mb-8 flex justify-center">
+              <div className="relative">
+                {/* Magic Wand */}
                 <motion.div
-                  className={`h-full bg-gradient-to-r ${sectionColor} relative`}
-                  style={{ width: `${volume}%` }}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  animate={{ 
+                    rotate: bassBoost ? [0, -15, 15, -10, 10, 0] : [0, -5, 5, 0],
+                    scale: bassBoost ? [1, 1.2, 1] : 1
+                  }}
+                  transition={{ 
+                    duration: bassBoost ? 0.5 : 2, 
+                    repeat: Infinity 
+                  }}
+                  className="relative"
                 >
-                  {bassBoost && (
+                  {/* Wand Stick */}
+                  <div className={`w-4 h-48 bg-gradient-to-b from-amber-600 to-amber-800 rounded-full mx-auto relative shadow-lg`}>
+                    {/* Wand Handle Grip */}
+                    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-6 h-16 border-2 border-amber-900 rounded-full opacity-50" />
+                    <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-amber-900 rounded-full" />
+                    <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-amber-900 rounded-full" />
+                  </div>
+                  
+                  {/* Magic Star at Top */}
+                  <motion.div
+                    className="absolute -top-8 left-1/2 transform -translate-x-1/2"
+                    animate={{ 
+                      rotate: 360,
+                      scale: bassBoost ? [1, 1.5, 1] : [1, 1.2, 1]
+                    }}
+                    transition={{ 
+                      rotate: { duration: 3, repeat: Infinity, ease: "linear" },
+                      scale: { duration: bassBoost ? 0.3 : 1, repeat: Infinity }
+                    }}
+                  >
+                    <div className={`relative w-16 h-16`}>
+                      {/* Star Shape */}
+                      <svg viewBox="0 0 100 100" className="w-full h-full">
+                        <defs>
+                          <linearGradient id={`starGradient-${section}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor={section === "left" ? "#10b981" : "#a855f7"} />
+                            <stop offset="100%" stopColor={section === "left" ? "#34d399" : "#ec4899"} />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d="M50 10 L60 40 L90 40 L65 60 L75 90 L50 70 L25 90 L35 60 L10 40 L40 40 Z"
+                          fill={`url(#starGradient-${section})`}
+                          stroke={section === "left" ? "#10b981" : "#a855f7"}
+                          strokeWidth="2"
+                          className="drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+                        />
+                      </svg>
+                      
+                      {/* Glow Effect */}
+                      <motion.div
+                        className={`absolute inset-0 rounded-full bg-gradient-to-r ${sectionColor} blur-xl opacity-60`}
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0.3, 0.6] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      />
+                    </div>
+                  </motion.div>
+
+                  {/* Magic Sparkles - Volume Intensity */}
+                  {[...Array(Math.floor(volume / 10))].map((_, i) => (
                     <motion.div
-                      className="absolute inset-0 bg-white/30"
-                      animate={{ opacity: [0, 1, 0] }}
-                      transition={{ duration: 0.3, repeat: Infinity }}
+                      key={i}
+                      className={`absolute w-2 h-2 ${section === "left" ? "bg-green-400" : "bg-purple-400"} rounded-full`}
+                      style={{
+                        left: `${50 + (Math.random() - 0.5) * 100}%`,
+                        top: `${Math.random() * 60}%`,
+                      }}
+                      animate={{
+                        opacity: [0, 1, 0],
+                        scale: [0, 1.5, 0],
+                        x: [(Math.random() - 0.5) * 30, (Math.random() - 0.5) * 60],
+                        y: [0, -50],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        delay: i * 0.15,
+                      }}
                     />
+                  ))}
+
+                  {/* Bass Boost Magic Burst */}
+                  {bassBoost && (
+                    <>
+                      {[...Array(20)].map((_, i) => (
+                        <motion.div
+                          key={`burst-${i}`}
+                          className="absolute w-1 h-1 bg-yellow-400 rounded-full"
+                          style={{
+                            left: '50%',
+                            top: '0%',
+                          }}
+                          animate={{
+                            opacity: [1, 0],
+                            scale: [0, 2],
+                            x: [0, (Math.cos(i * 18 * Math.PI / 180) * 80)],
+                            y: [0, (Math.sin(i * 18 * Math.PI / 180) * 80)],
+                          }}
+                          transition={{
+                            duration: 0.8,
+                            repeat: Infinity,
+                            delay: (i * 0.05),
+                          }}
+                        />
+                      ))}
+                    </>
                   )}
                 </motion.div>
-              </div>
-            </div>
 
-            {/* Volume Icon */}
-            <div className="flex justify-center mb-8">
-              <motion.div
-                animate={{ 
-                  scale: bassBoost ? [1, 1.5, 1] : [1, 1.1, 1],
-                  rotate: bassBoost ? [0, 5, -5, 0] : 0
-                }}
-                transition={{ 
-                  duration: bassBoost ? 0.2 : 0.8, 
-                  repeat: Infinity 
-                }}
-                className="relative"
-              >
-                <Volume2 className={`w-32 h-32 ${section === "left" ? "text-green-400" : "text-purple-400"}`} />
-                {bassBoost && (
-                  <motion.div
-                    className="absolute inset-0"
-                    animate={{ scale: [1, 2, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{ duration: 0.5, repeat: Infinity }}
-                  >
-                    <Zap className="w-32 h-32 text-yellow-400" />
-                  </motion.div>
-                )}
-              </motion.div>
+                {/* Magic Aura */}
+                <motion.div
+                  className={`absolute inset-0 rounded-full bg-gradient-to-r ${sectionColor} blur-2xl opacity-30`}
+                  animate={{ 
+                    scale: bassBoost ? [1, 2, 1] : [1, 1.3, 1],
+                    opacity: bassBoost ? [0.3, 0.6, 0.3] : [0.3, 0.5, 0.3]
+                  }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+              </div>
             </div>
 
             {/* Track Selector */}
@@ -464,13 +590,59 @@ function AudienceContent() {
             </motion.button>
 
             {/* Status */}
-            <div className="mt-6 p-4 bg-gray-900 rounded-xl border border-gray-800">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Status</span>
-                <span className={`font-bold ${bassBoost ? "text-yellow-400 animate-pulse" : "text-white"}`}>
-                  {bassBoost ? "🔥 BASS DROP!" : isPlaying ? "🎵 Playing" : "⏸ Paused"}
-                </span>
+            <div className="mt-6 space-y-3">
+              <div className="p-4 bg-gray-900 rounded-xl border border-gray-800">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Status</span>
+                  <span className={`font-bold ${bassBoost ? "text-yellow-400 animate-pulse" : "text-white"}`}>
+                    {bassBoost ? "🔥 BASS DROP!" : isPlaying ? "🎵 Playing" : "⏸ Paused"}
+                  </span>
+                </div>
               </div>
+
+              {/* 8D Wave Effect Indicator */}
+              {isPlaying && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 bg-gradient-to-r from-cyan-900/50 to-blue-900/50 rounded-xl border border-cyan-500/30"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <motion.div
+                        animate={{ 
+                          x: [-10, 10, -10],
+                          opacity: [0.5, 1, 0.5]
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <Zap className="w-4 h-4 text-cyan-400" />
+                      </motion.div>
+                      <span className="text-cyan-300 text-sm font-semibold">8D Wave Active</span>
+                    </div>
+                    <div className="flex space-x-1">
+                      {[...Array(5)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className="w-1 h-4 bg-cyan-400 rounded-full"
+                          animate={{ 
+                            scaleY: [0.3, 1, 0.3],
+                            opacity: [0.3, 1, 0.3]
+                          }}
+                          transition={{ 
+                            duration: 1,
+                            repeat: Infinity,
+                            delay: i * 0.1
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-cyan-400/70 text-xs mt-2">
+                    Sound traveling in stereo space 🌊
+                  </p>
+                </motion.div>
+              )}
             </div>
           </div>
         </div>
