@@ -57,7 +57,7 @@ function AudienceContent() {
     if (!sessionId || !section) return;
 
     // Use local IP for mobile connection
-    const socketUrl = "http://192.168.1.89:3001";
+    const socketUrl = "http://172.20.200.248:3001";
     socketRef.current = io(socketUrl, {
       query: { role: "audience", sessionId, section }
     });

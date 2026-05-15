@@ -28,7 +28,7 @@ export default function ConductorPage() {
   // Initialize Socket.IO
   useEffect(() => {
     if (!sessionId) return;
-    const socketUrl = "http://192.168.1.89:3001";
+    const socketUrl = "http://172.20.200.248:3001";
     socketRef.current = io(socketUrl, {
       query: { role: "conductor", sessionId }
     });
@@ -262,7 +262,7 @@ export default function ConductorPage() {
   };
 
   useEffect(() => {
-    const localIP = '192.168.1.89';
+    const localIP = '172.20.200.248';
     const url = `http://${localIP}:3000/audience?session=${sessionId}`;
     setAudienceUrl(url);
   }, [sessionId]);
