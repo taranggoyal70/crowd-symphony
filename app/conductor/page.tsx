@@ -28,7 +28,9 @@ export default function ConductorPage() {
   // Initialize Socket.IO
   useEffect(() => {
     if (!sessionId) return;
-    const socketUrl = "http://172.20.200.248:3001";
+    const socketUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+      ? `${window.location.protocol}//${window.location.hostname}:3001`
+      : "http://172.20.200.248:3001";
     socketRef.current = io(socketUrl, {
       query: { role: "conductor", sessionId }
     });
@@ -262,9 +264,13 @@ export default function ConductorPage() {
   };
 
   useEffect(() => {
-    const localIP = '172.20.200.248';
-    const url = `http://${localIP}:3000/audience?session=${sessionId}`;
-    setAudienceUrl(url);
+    if (typeof window !== 'undefined') {
+      const baseUrl = window.location.hostname === 'localhost'
+        ? 'http://172.20.200.248:3000'
+        : `${window.location.protocol}//${window.location.hostname}`;
+      const url = `${baseUrl}/audience?session=${sessionId}`;
+      setAudienceUrl(url);
+    }
   }, [sessionId]);
 
   const totalUsers = connectedUsers.left + connectedUsers.right;

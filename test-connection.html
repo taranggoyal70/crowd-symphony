@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .status {
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+        .success { background: #22c55e; }
+        .error { background: #ef4444; }
+        .info { background: #3b82f6; }
+        h1 { color: #fff; }
+        code {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Network Connection Test</h1>
+    
+    <div class="status success">
+        ✅ You can reach this page!
+    </div>
+    
+    <div class="status info">
+        <strong>Your IP:</strong> <span id="ip">Loading...</span>
+    </div>
+    
+    <div class="status info">
+        <strong>Server IP:</strong> <code>172.20.207.165</code>
+    </div>
+    
+    <div class="status info">
+        <strong>Port 3000:</strong> <span id="port3000">Testing...</span>
+    </div>
+    
+    <div class="status info">
+        <strong>Port 3001 (WebSocket):</strong> <span id="port3001">Testing...</span>
+    </div>
+
+    <h2>Next Steps:</h2>
+    <ul>
+        <li>If you see this page, port 3000 is working ✅</li>
+        <li>Now test the audience page: <a href="/audience?session=test123" style="color: #60a5fa;">Click here</a></li>
+        <li>Check browser console for any errors (F12)</li>
+    </ul>
+
+    <script>
+        // Get client IP
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('ip').textContent = data.ip;
+            })
+            .catch(() => {
+                document.getElementById('ip').textContent = 'Unable to detect';
+            });
+
+        // Test WebSocket connection
+        setTimeout(() => {
+            try {
+                const socket = io('http://172.20.207.165:3001');
+                socket.on('connect', () => {
+                    document.getElementById('port3001').innerHTML = '✅ Connected';
+                    document.getElementById('port3001').parentElement.className = 'status success';
+                });
+                socket.on('connect_error', (err) => {
+                    document.getElementById('port3001').innerHTML = '❌ Failed: ' + err.message;
+                    document.getElementById('port3001').parentElement.className = 'status error';
+                });
+            } catch (err) {
+                document.getElementById('port3001').innerHTML = '❌ Error: ' + err.message;
+                document.getElementById('port3001').parentElement.className = 'status error';
+            }
+        }, 1000);
+
+        document.getElementById('port3000').innerHTML = '✅ Working (you loaded this page)';
+        document.getElementById('port3000').parentElement.className = 'status success';
+    </script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</body>
+</html>
