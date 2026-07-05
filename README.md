@@ -1,5 +1,7 @@
 # 🎵 Crowd Symphony
 
+![Crowd Symphony social preview](public/social-preview.png)
+
 Control music with hand gestures! Be the conductor and control the volume for your entire audience in real-time.
 
 ## ✨ Features
