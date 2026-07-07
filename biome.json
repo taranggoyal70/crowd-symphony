@@ -1,0 +1,33 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+	"files": {
+		"includes": [
+			"**",
+			"!.next",
+			"!.vercel",
+			"!node_modules",
+			"!package-lock.json"
+		]
+	},
+	"linter": {
+		"rules": {
+			"a11y": {
+				"noSvgWithoutTitle": "off",
+				"useButtonType": "off",
+				"useMediaCaption": "off"
+			},
+			"complexity": {
+				"noUselessFragments": "off"
+			},
+			"correctness": {
+				"useExhaustiveDependencies": "off"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "off",
+				"noExplicitAny": "off",
+				"noUnknownAtRules": "off",
+				"useIterableCallbackReturn": "off"
+			}
+		}
+	}
+}

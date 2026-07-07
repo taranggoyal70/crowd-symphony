@@ -49,7 +49,7 @@ Control music with hand gestures! Be the conductor and control the volume for yo
 - **Section Selection** - Join left or right side
 
 ### **🔥 Real-time Features**
-- **WebSocket Communication** - Instant updates
+- **Realtime Control** - Low-latency conductor updates via Vercel Functions
 - **Session Management** - Multiple concurrent sessions
 - **User Tracking** - See how many people are connected
 - **Auto-sync** - All phones respond together
@@ -58,11 +58,11 @@ Control music with hand gestures! Be the conductor and control the volume for yo
 
 ## 🛠️ **Tech Stack**
 
-- **Frontend:** Next.js 15, React 19, TypeScript
+- **Frontend:** Next.js 16, React 19, TypeScript
 - **Styling:** Tailwind CSS, Framer Motion
 - **Hand Tracking:** MediaPipe Hands
 - **Audio:** Web Audio API
-- **Real-time:** Socket.IO
+- **Real-time:** Vercel Functions + Runtime Cache
 - **QR Codes:** qrcode.react
 - **Icons:** Lucide React
 
@@ -74,7 +74,7 @@ Control music with hand gestures! Be the conductor and control the volume for yo
 - Node.js 18+
 - npm or yarn
 - Camera-enabled device (for conductor)
-- Same WiFi network for all devices
+- A deployed Vercel URL, or Vercel CLI for local realtime testing
 
 ### **Installation**
 
@@ -86,7 +86,7 @@ cd crowd-symphony
 # Install dependencies
 npm install
 
-# Start the development server
+# Start the Vercel development server
 npm run dev
 ```
 
@@ -143,29 +143,17 @@ See [HOW_TO_ADD_MUSIC.md](HOW_TO_ADD_MUSIC.md) for detailed instructions.
 
 ---
 
-## 🌐 **Network Setup**
+## 🌐 **Vercel Setup**
 
-### **Find Your Local IP**
+This app is Vercel-ready. Realtime uses the `/api/realtime` route with Vercel Runtime Cache, so there is no hardcoded local IP address or separate Socket.IO server to deploy.
 
-**Mac/Linux:**
 ```bash
-ifconfig | grep "inet " | grep -v 127.0.0.1
+npm install
+npm run build
+vercel deploy --prod
 ```
 
-**Windows:**
-```bash
-ipconfig
-```
-
-### **Update IP Address**
-
-Edit these files with your local IP:
-- `app/conductor/page.tsx` (line 30)
-- `app/audience/page.tsx` (line 54)
-
-```typescript
-const socketUrl = "http://YOUR_IP:3001";
-```
+For local testing, use `npm run dev` so the app runs through Vercel CLI and matches production routing.
 
 ---
 
@@ -182,7 +170,7 @@ crowd-symphony/
 │   └── music/                # Music files
 │       ├── dubstep.mp3
 │       └── orchestra.mp3
-├── server.js                 # WebSocket server
+├── app/api/realtime/route.ts # Vercel realtime route
 ├── package.json              # Dependencies
 └── README.md                 # This file
 ```
@@ -231,7 +219,7 @@ MIT License - feel free to use this project for any purpose!
 ## 🙏 **Credits**
 
 - **MediaPipe** - Hand tracking technology
-- **Socket.IO** - Real-time communication
+- **Vercel Functions** - Realtime conductor/audience communication
 - **Next.js** - React framework
 - **Tailwind CSS** - Styling
 - **Framer Motion** - Animations
