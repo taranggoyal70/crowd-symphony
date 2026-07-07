@@ -22,16 +22,17 @@ function AudienceContent() {
 	const [selectedTrack, setSelectedTrack] = useState(0);
 	const [flashEffect, setFlashEffect] = useState(false);
 	const [shakeEffect, setShakeEffect] = useState(false);
+	const [audioError, setAudioError] = useState<string | null>(null);
 
 	// Music tracks - add your own!
 	const tracks = [
 		{
-			name: "Epic Dubstep Mix",
-			url: "/music/dubstep.mp3",
-		},
-		{
 			name: "Epic Orchestra",
 			url: "/music/orchestra.mp3",
+		},
+		{
+			name: "Epic Dubstep Mix",
+			url: "/music/dubstep.mp3",
 		},
 		{
 			name: "Electronic Beat",
@@ -55,6 +56,7 @@ function AudienceContent() {
 	const pannerNodeRef = useRef<StereoPannerNode | null>(null);
 	const waveAnimationRef = useRef<number | null>(null);
 	const clientIdRef = useRef(createClientId());
+	const conductorWasActiveRef = useRef(false);
 
 	// Register this audience device and poll conductor state.
 	useEffect(() => {
@@ -121,10 +123,15 @@ function AudienceContent() {
 					}
 				}
 
-				if (!state.conductorActive && audioRef.current) {
+				if (
+					conductorWasActiveRef.current &&
+					!state.conductorActive &&
+					audioRef.current
+				) {
 					audioRef.current.pause();
 					setIsPlaying(false);
 				}
+				conductorWasActiveRef.current = state.conductorActive;
 			} catch (error) {
 				console.error("Realtime state sync failed:", error);
 			}
@@ -246,16 +253,31 @@ function AudienceContent() {
 		setSection(selectedSection);
 	};
 
-	const togglePlay = () => {
+	const togglePlay = async () => {
 		if (!audioRef.current) return;
 
 		if (isPlaying) {
 			audioRef.current.pause();
+			setIsPlaying(false);
 		} else {
-			initAudioContext();
-			audioRef.current.play();
+			try {
+				setAudioError(null);
+				initAudioContext();
+
+				if (audioContextRef.current?.state === "suspended") {
+					await audioContextRef.current.resume();
+				}
+
+				await audioRef.current.play();
+				setIsPlaying(true);
+			} catch (error) {
+				console.error("Audio playback failed:", error);
+				setAudioError(
+					"Sound could not start. Tap again, turn off silent mode, and make sure the track has loaded.",
+				);
+				setIsPlaying(false);
+			}
 		}
-		setIsPlaying(!isPlaying);
 	};
 
 	if (!sessionId) {
@@ -630,6 +652,7 @@ function AudienceContent() {
 													audioRef.current.pause();
 												}
 											}
+											setAudioError(null);
 											setSelectedTrack(index);
 										}}
 										className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
@@ -657,6 +680,11 @@ function AudienceContent() {
 						>
 							{isPlaying ? "⏸ Pause" : "▶ Drop It"}
 						</motion.button>
+						{audioError && (
+							<p className="mt-3 text-center text-sm text-yellow-300">
+								{audioError}
+							</p>
+						)}
 
 						{/* Status */}
 						<div className="mt-6 space-y-3">
@@ -729,6 +757,7 @@ function AudienceContent() {
 					ref={audioRef}
 					loop
 					crossOrigin="anonymous"
+					preload="auto"
 					src={tracks[selectedTrack].url}
 				/>
 			</div>
