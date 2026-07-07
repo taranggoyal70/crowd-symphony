@@ -79,7 +79,7 @@ function AudienceContent() {
 					gainNodeRef.current.gain.setTargetAtTime(
 						newVolume / 100,
 						audioContextRef.current?.currentTime || 0,
-						0.1,
+						0.04,
 					);
 				}
 
@@ -154,7 +154,7 @@ function AudienceContent() {
 		heartbeat();
 		applyState();
 		const heartbeatInterval = window.setInterval(heartbeat, 2000);
-		const stateInterval = window.setInterval(applyState, 250);
+		const stateInterval = window.setInterval(applyState, 100);
 
 		return () => {
 			cancelled = true;

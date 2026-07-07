@@ -29,6 +29,8 @@ export default function ConductorPage() {
 	const [audienceUrl, setAudienceUrl] = useState("");
 	const [showQR, setShowQR] = useState(false);
 	const handsRef = useRef<any>(null);
+	const latestVolumesRef = useRef({ leftVolume: 50, rightVolume: 50 });
+	const isPublishingVolumeRef = useRef(false);
 
 	// Generate session ID on client-side only
 	useEffect(() => {
@@ -63,25 +65,59 @@ export default function ConductorPage() {
 		};
 	}, [sessionId]);
 
-	// Broadcast volume changes
+	useEffect(() => {
+		latestVolumesRef.current = { leftVolume, rightVolume };
+	}, [leftVolume, rightVolume]);
+
+	// Stream volume changes while conducting. This intentionally throttles instead
+	// of debouncing, so hand movement is published continuously instead of only
+	// after the hand stops moving.
 	useEffect(() => {
 		if (!sessionId || !isActive) return;
 
-		const timeout = window.setTimeout(() => {
-			console.log("Publishing volume change:", { leftVolume, rightVolume });
+		let stopped = false;
+		let lastPublished: { leftVolume: number; rightVolume: number } | null =
+			null;
+
+		const publishLatestVolume = () => {
+			if (stopped || isPublishingVolumeRef.current) return;
+
+			const next = latestVolumesRef.current;
+			if (
+				lastPublished &&
+				lastPublished.leftVolume === next.leftVolume &&
+				lastPublished.rightVolume === next.rightVolume
+			) {
+				return;
+			}
+
+			isPublishingVolumeRef.current = true;
 			postRealtimeMessage({
 				role: "conductor",
 				sessionId,
 				type: "volumeChange",
-				leftVolume,
-				rightVolume,
-			}).catch((error) => {
-				console.error("Realtime volume publish failed:", error);
-			});
-		}, 80);
+				leftVolume: next.leftVolume,
+				rightVolume: next.rightVolume,
+			})
+				.then(() => {
+					lastPublished = next;
+				})
+				.catch((error) => {
+					console.error("Realtime volume publish failed:", error);
+				})
+				.finally(() => {
+					isPublishingVolumeRef.current = false;
+				});
+		};
 
-		return () => window.clearTimeout(timeout);
-	}, [leftVolume, rightVolume, isActive, sessionId]);
+		publishLatestVolume();
+		const interval = window.setInterval(publishLatestVolume, 75);
+
+		return () => {
+			stopped = true;
+			window.clearInterval(interval);
+		};
+	}, [isActive, sessionId]);
 
 	// Load MediaPipe Hands
 	useEffect(() => {
