@@ -1,4 +1,18 @@
 export type Section = "left" | "right";
+export type EffectMode = "symphony" | "bass-drop" | "strobe";
+export type MomentKind =
+	| "pulse"
+	| "left-drop"
+	| "right-drop"
+	| "blackout"
+	| "finale";
+
+export type CrowdMoment = {
+	id: string;
+	label: string;
+	kind: MomentKind;
+	triggeredAt: number;
+};
 
 export type RealtimeState = {
 	type: "state";
@@ -9,7 +23,8 @@ export type RealtimeState = {
 	volumeSequence: number;
 	selectedTrack: number;
 	eventName: string;
-	effectMode: "symphony" | "bass-drop" | "strobe";
+	effectMode: EffectMode;
+	activeMoment: CrowdMoment | null;
 	userCount: {
 		left: number;
 		right: number;
@@ -47,12 +62,21 @@ type HostMessage =
 			type: "hostUpdate";
 			selectedTrack?: number;
 			eventName?: string;
-			effectMode?: RealtimeState["effectMode"];
+			effectMode?: EffectMode;
 	  }
 	| {
 			role: "host";
 			sessionId: string;
 			type: "showStart" | "showStop";
+	  }
+	| {
+			role: "host";
+			sessionId: string;
+			type: "triggerMoment";
+			moment: {
+				label: string;
+				kind: MomentKind;
+			};
 	  };
 
 export function createClientId() {

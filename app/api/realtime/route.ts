@@ -8,6 +8,16 @@ type AudienceMember = {
 	lastSeen: number;
 };
 
+type EffectMode = "symphony" | "bass-drop" | "strobe";
+type MomentKind = "pulse" | "left-drop" | "right-drop" | "blackout" | "finale";
+
+type CrowdMoment = {
+	id: string;
+	label: string;
+	kind: MomentKind;
+	triggeredAt: number;
+};
+
 type ControlState = {
 	leftVolume: number;
 	rightVolume: number;
@@ -16,7 +26,8 @@ type ControlState = {
 	volumeSequence: number;
 	selectedTrack: number;
 	eventName: string;
-	effectMode: "symphony" | "bass-drop" | "strobe";
+	effectMode: EffectMode;
+	activeMoment: CrowdMoment | null;
 };
 
 type AudienceState = {
@@ -51,12 +62,21 @@ type RealtimePostBody =
 			type: "hostUpdate";
 			selectedTrack?: number;
 			eventName?: string;
-			effectMode?: ControlState["effectMode"];
+			effectMode?: EffectMode;
 	  }
 	| {
 			role: "host";
 			sessionId: string;
 			type: "showStart" | "showStop";
+	  }
+	| {
+			role: "host";
+			sessionId: string;
+			type: "triggerMoment";
+			moment: {
+				label?: string;
+				kind?: MomentKind;
+			};
 	  };
 
 export const runtime = "nodejs";
@@ -77,6 +97,7 @@ function initialControlState(): ControlState {
 		selectedTrack: 0,
 		eventName: "Crowd Symphony",
 		effectMode: "symphony",
+		activeMoment: null,
 	};
 }
 
@@ -138,8 +159,54 @@ function safeEventName(value: unknown, fallback: string) {
 	return cleaned || fallback;
 }
 
-function isEffectMode(value: unknown): value is ControlState["effectMode"] {
+function isEffectMode(value: unknown): value is EffectMode {
 	return value === "symphony" || value === "bass-drop" || value === "strobe";
+}
+
+function isMomentKind(value: unknown): value is MomentKind {
+	return (
+		value === "pulse" ||
+		value === "left-drop" ||
+		value === "right-drop" ||
+		value === "blackout" ||
+		value === "finale"
+	);
+}
+
+function safeMomentLabel(value: unknown, fallback: string) {
+	if (typeof value !== "string") {
+		return fallback;
+	}
+
+	const cleaned = value.trim().slice(0, 42);
+	return cleaned || fallback;
+}
+
+function defaultMomentLabel(kind: MomentKind) {
+	switch (kind) {
+		case "left-drop":
+			return "Left Side Drop";
+		case "right-drop":
+			return "Right Side Drop";
+		case "blackout":
+			return "Blackout Build";
+		case "finale":
+			return "Finale Burst";
+		default:
+			return "Full Crowd Pulse";
+	}
+}
+
+function effectForMoment(kind: MomentKind): EffectMode {
+	if (kind === "blackout" || kind === "finale") {
+		return "strobe";
+	}
+
+	if (kind === "left-drop" || kind === "right-drop") {
+		return "bass-drop";
+	}
+
+	return "symphony";
 }
 
 function pruneAudience(state: AudienceState) {
@@ -184,6 +251,7 @@ function responseFor(control: ControlState, audience: AudienceState) {
 		selectedTrack: control.selectedTrack,
 		eventName: control.eventName,
 		effectMode: control.effectMode,
+		activeMoment: control.activeMoment,
 		userCount: counts(prunedAudience),
 	});
 }
@@ -314,6 +382,18 @@ export async function POST(request: Request) {
 
 		if (body.type === "showStop") {
 			control.conductorActive = false;
+		}
+
+		if (body.type === "triggerMoment") {
+			const kind = isMomentKind(body.moment?.kind) ? body.moment.kind : "pulse";
+			control.activeMoment = {
+				id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+				label: safeMomentLabel(body.moment?.label, defaultMomentLabel(kind)),
+				kind,
+				triggeredAt: Date.now(),
+			};
+			control.conductorActive = true;
+			control.effectMode = effectForMoment(kind);
 		}
 
 		control.updatedAt = Date.now();

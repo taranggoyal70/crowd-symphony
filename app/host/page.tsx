@@ -5,9 +5,11 @@ import {
 	Activity,
 	Copy,
 	ExternalLink,
+	Megaphone,
 	Music,
 	Play,
 	QrCode,
+	Share2,
 	Sparkles,
 	Square,
 	Users,
@@ -36,6 +38,7 @@ export default function HostPage() {
 	const [state, setState] = useState<RealtimeState | null>(null);
 	const [showQR, setShowQR] = useState(true);
 	const [copied, setCopied] = useState<string | null>(null);
+	const [lastMoment, setLastMoment] = useState<string | null>(null);
 
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
@@ -46,12 +49,13 @@ export default function HostPage() {
 
 	const urls = useMemo(() => {
 		if (!roomCode || typeof window === "undefined") {
-			return { audience: "", conductor: "" };
+			return { audience: "", conductor: "", recap: "" };
 		}
 		const origin = window.location.origin;
 		return {
 			audience: `${origin}/audience?session=${roomCode}`,
 			conductor: `${origin}/conductor?session=${roomCode}`,
+			recap: `${origin}/recap?room=${roomCode}`,
 		};
 	}, [roomCode]);
 
@@ -112,6 +116,24 @@ export default function HostPage() {
 			type: active ? "showStart" : "showStop",
 		});
 		setState(nextState);
+	};
+
+	const triggerMoment = async (
+		label: string,
+		kind: NonNullable<RealtimeState["activeMoment"]>["kind"],
+	) => {
+		if (!roomCode) return;
+
+		const nextState = await postRealtimeMessage({
+			role: "host",
+			sessionId: roomCode,
+			type: "triggerMoment",
+			moment: { label, kind },
+		});
+		setState(nextState);
+		setEffectMode(nextState.effectMode);
+		setLastMoment(label);
+		window.setTimeout(() => setLastMoment(null), 1600);
 	};
 
 	const copy = async (label: string, value: string) => {
@@ -270,6 +292,72 @@ export default function HostPage() {
 								</div>
 							</div>
 						</div>
+
+						<div className="rounded-3xl border border-violet-400/20 bg-violet-500/10 p-6 shadow-2xl shadow-violet-950/20">
+							<div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+								<div>
+									<div className="mb-2 inline-flex items-center gap-2 rounded-full border border-violet-300/30 bg-black/30 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-violet-200">
+										<Megaphone className="h-4 w-4" />
+										Show Composer
+									</div>
+									<h2 className="text-2xl font-bold">Trigger crowd moments</h2>
+									<p className="text-sm text-zinc-300">
+										One tap sends synced visual, vibration, and audio cues to
+										every joined phone.
+									</p>
+								</div>
+								{lastMoment && (
+									<div className="rounded-full bg-green-400 px-4 py-2 text-sm font-black text-black">
+										{lastMoment} fired
+									</div>
+								)}
+							</div>
+							<div className="grid gap-3 md:grid-cols-5">
+								{[
+									{
+										label: "Full Crowd Pulse",
+										kind: "pulse" as const,
+										tone: "from-violet-500 to-fuchsia-500",
+									},
+									{
+										label: "Left Side Drop",
+										kind: "left-drop" as const,
+										tone: "from-emerald-500 to-teal-400",
+									},
+									{
+										label: "Right Side Drop",
+										kind: "right-drop" as const,
+										tone: "from-pink-500 to-rose-400",
+									},
+									{
+										label: "Blackout Build",
+										kind: "blackout" as const,
+										tone: "from-zinc-700 to-zinc-300",
+									},
+									{
+										label: "Finale Burst",
+										kind: "finale" as const,
+										tone: "from-yellow-400 to-orange-500",
+									},
+								].map((moment) => (
+									<button
+										key={moment.kind}
+										onClick={() => triggerMoment(moment.label, moment.kind)}
+										className={`rounded-2xl bg-gradient-to-br ${moment.tone} p-4 text-left font-black text-white shadow-lg transition hover:scale-[1.02] active:scale-[0.98]`}
+									>
+										<Sparkles className="mb-4 h-5 w-5" />
+										{moment.label}
+									</button>
+								))}
+							</div>
+							{state?.activeMoment && (
+								<p className="mt-4 text-sm text-violet-100">
+									Latest:{" "}
+									<span className="font-bold">{state.activeMoment.label}</span>{" "}
+									was sent to the room.
+								</p>
+							)}
+						</div>
 					</section>
 
 					<aside className="space-y-6">
@@ -310,6 +398,21 @@ export default function HostPage() {
 									className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left text-sm"
 								>
 									<span className="truncate pr-3">{urls.conductor}</span>
+									<Copy className="h-4 w-4 shrink-0" />
+								</button>
+								<Link
+									href={urls.recap || "/recap"}
+									className="flex items-center justify-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3 font-bold text-violet-100 transition hover:bg-violet-500/20"
+								>
+									<Share2 className="h-4 w-4" />
+									Open live recap
+									<ExternalLink className="h-4 w-4" />
+								</Link>
+								<button
+									onClick={() => copy("Recap link", urls.recap)}
+									className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-left text-sm"
+								>
+									<span className="truncate pr-3">{urls.recap}</span>
 									<Copy className="h-4 w-4 shrink-0" />
 								</button>
 							</div>

@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Music, Users, Zap } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import {
+	type CrowdMoment,
 	createClientId,
 	getRealtimeState,
 	postRealtimeMessage,
@@ -29,6 +30,7 @@ function AudienceContent() {
 	const [effectMode, setEffectMode] = useState<
 		"symphony" | "bass-drop" | "strobe"
 	>("symphony");
+	const [momentBanner, setMomentBanner] = useState<CrowdMoment | null>(null);
 
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
@@ -40,6 +42,7 @@ function AudienceContent() {
 	const clientIdRef = useRef(createClientId());
 	const conductorWasActiveRef = useRef(false);
 	const previousTrackRef = useRef(selectedTrack);
+	const lastMomentIdRef = useRef<string | null>(null);
 
 	// Register this audience device and poll conductor state.
 	useEffect(() => {
@@ -61,6 +64,47 @@ function AudienceContent() {
 				setEventName(state.eventName);
 				setEffectMode(state.effectMode);
 
+				if (
+					state.activeMoment &&
+					state.activeMoment.id !== lastMomentIdRef.current
+				) {
+					lastMomentIdRef.current = state.activeMoment.id;
+					const shouldHitThisPhone =
+						state.activeMoment.kind === "pulse" ||
+						state.activeMoment.kind === "finale" ||
+						state.activeMoment.kind === "blackout" ||
+						(state.activeMoment.kind === "left-drop" && section === "left") ||
+						(state.activeMoment.kind === "right-drop" && section === "right");
+
+					setMomentBanner(state.activeMoment);
+					window.setTimeout(() => setMomentBanner(null), 1800);
+
+					if (shouldHitThisPhone) {
+						setFlashEffect(true);
+						setShakeEffect(true);
+						setBassBoost(true);
+						window.setTimeout(() => setFlashEffect(false), 260);
+						window.setTimeout(() => setShakeEffect(false), 520);
+						window.setTimeout(() => setBassBoost(false), 900);
+
+						if (navigator.vibrate) {
+							navigator.vibrate(
+								state.activeMoment.kind === "finale"
+									? [90, 40, 90, 40, 140]
+									: [70, 35, 70],
+							);
+						}
+
+						if (bassNodeRef.current) {
+							bassNodeRef.current.gain.setTargetAtTime(
+								state.activeMoment.kind === "blackout" ? -8 : 18,
+								audioContextRef.current?.currentTime || 0,
+								0.03,
+							);
+						}
+					}
+				}
+
 				if (gainNodeRef.current) {
 					// Smooth volume transition
 					gainNodeRef.current.gain.setTargetAtTime(
@@ -71,7 +115,7 @@ function AudienceContent() {
 				}
 
 				// Bass boost and effects when volume is high
-				if (newVolume > 70) {
+				if (newVolume > 70 || state.effectMode === "bass-drop") {
 					setBassBoost(true);
 
 					// Bass boost audio
@@ -437,7 +481,7 @@ function AudienceContent() {
 			)}
 
 			{/* Strobe Effect at Max Volume */}
-			{volume > 90 && (
+			{(volume > 90 || effectMode === "strobe") && (
 				<motion.div
 					className="absolute inset-0 pointer-events-none z-40"
 					animate={{ opacity: [0, 0.5, 0] }}
@@ -446,6 +490,29 @@ function AudienceContent() {
 					<div
 						className={`absolute inset-0 bg-gradient-to-br ${sectionColor}`}
 					/>
+				</motion.div>
+			)}
+
+			{momentBanner && (
+				<motion.div
+					initial={{ opacity: 0, y: -18, scale: 0.96 }}
+					animate={{ opacity: 1, y: 0, scale: 1 }}
+					exit={{ opacity: 0, y: -18, scale: 0.96 }}
+					className="fixed left-4 right-4 top-6 z-[60] mx-auto max-w-md rounded-3xl border border-white/20 bg-white/10 p-4 text-center shadow-2xl backdrop-blur"
+				>
+					<p className="text-xs font-black uppercase tracking-[0.35em] text-yellow-300">
+						Host moment
+					</p>
+					<p className="mt-1 text-2xl font-black text-white">
+						{momentBanner.label}
+					</p>
+					<p className="mt-1 text-sm text-zinc-200">
+						{momentBanner.kind === "left-drop" && section !== "left"
+							? "Watch the left side drop."
+							: momentBanner.kind === "right-drop" && section !== "right"
+								? "Watch the right side answer."
+								: "Your phone is part of the show."}
+					</p>
 				</motion.div>
 			)}
 
