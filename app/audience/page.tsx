@@ -23,6 +23,7 @@ function AudienceContent() {
 	const [flashEffect, setFlashEffect] = useState(false);
 	const [shakeEffect, setShakeEffect] = useState(false);
 	const [audioError, setAudioError] = useState<string | null>(null);
+	const [conductorActive, setConductorActive] = useState(false);
 
 	// Music tracks - add your own!
 	const tracks = [
@@ -73,6 +74,7 @@ function AudienceContent() {
 					section === "left" ? state.leftVolume : state.rightVolume;
 				setVolume(newVolume);
 				setConnectedUsers(state.userCount.total);
+				setConductorActive(state.conductorActive);
 
 				if (gainNodeRef.current) {
 					// Smooth volume transition
@@ -700,6 +702,25 @@ function AudienceContent() {
 												? "🎵 Playing"
 												: "⏸ Paused"}
 									</span>
+								</div>
+								<div className="mt-3 flex items-center justify-between text-sm">
+									<span className="text-gray-400">Conductor</span>
+									<span
+										className={`flex items-center gap-2 font-bold ${
+											conductorActive ? "text-green-300" : "text-yellow-300"
+										}`}
+									>
+										<span
+											className={`h-2 w-2 rounded-full ${
+												conductorActive ? "bg-green-400" : "bg-yellow-400"
+											}`}
+										/>
+										{conductorActive ? "Live signal" : "Waiting"}
+									</span>
+								</div>
+								<div className="mt-3 flex items-center justify-between text-sm">
+									<span className="text-gray-400">Volume</span>
+									<span className="font-bold text-white">{volume}%</span>
 								</div>
 							</div>
 

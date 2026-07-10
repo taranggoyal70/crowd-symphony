@@ -6,6 +6,7 @@ export type RealtimeState = {
 	rightVolume: number;
 	conductorActive: boolean;
 	updatedAt: number;
+	volumeSequence: number;
 	userCount: {
 		left: number;
 		right: number;
@@ -20,6 +21,7 @@ type ConductorMessage =
 			type: "volumeChange";
 			leftVolume: number;
 			rightVolume: number;
+			sequence: number;
 	  }
 	| {
 			role: "conductor";

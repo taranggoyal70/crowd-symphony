@@ -8,10 +8,15 @@ type AudienceMember = {
 	lastSeen: number;
 };
 
-type SessionState = {
+type ControlState = {
 	leftVolume: number;
 	rightVolume: number;
 	conductorActive: boolean;
+	updatedAt: number;
+	volumeSequence: number;
+};
+
+type AudienceState = {
 	audience: Record<string, AudienceMember>;
 	updatedAt: number;
 };
@@ -23,6 +28,7 @@ type RealtimePostBody =
 			type: "volumeChange";
 			leftVolume: number;
 			rightVolume: number;
+			sequence?: number;
 	  }
 	| {
 			role: "conductor";
@@ -45,18 +51,29 @@ const cache = getCache({ namespace: "crowd-symphony" });
 const audienceTtlMs = 10_000;
 const sessionTtlSeconds = 60 * 60;
 
-function initialState(): SessionState {
+function initialControlState(): ControlState {
 	return {
 		leftVolume: 50,
 		rightVolume: 50,
 		conductorActive: false,
+		updatedAt: Date.now(),
+		volumeSequence: 0,
+	};
+}
+
+function initialAudienceState(): AudienceState {
+	return {
 		audience: {},
 		updatedAt: Date.now(),
 	};
 }
 
-function sessionKey(sessionId: string) {
-	return `session:${sessionId}`;
+function controlKey(sessionId: string) {
+	return `control:${sessionId}`;
+}
+
+function audienceKey(sessionId: string) {
+	return `audience:${sessionId}`;
 }
 
 function isValidSessionId(sessionId: unknown): sessionId is string {
@@ -77,7 +94,15 @@ function safeNumber(value: unknown, fallback: number) {
 	return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function pruneAudience(state: SessionState) {
+function safeSequence(value: unknown, fallback: number) {
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return fallback;
+	}
+
+	return Math.max(0, Math.round(value));
+}
+
+function pruneAudience(state: AudienceState) {
 	const now = Date.now();
 	for (const [clientId, member] of Object.entries(state.audience)) {
 		if (now - member.lastSeen > audienceTtlMs) {
@@ -87,7 +112,7 @@ function pruneAudience(state: SessionState) {
 	return state;
 }
 
-function counts(state: SessionState) {
+function counts(state: AudienceState) {
 	let left = 0;
 	let right = 0;
 
@@ -106,39 +131,63 @@ function counts(state: SessionState) {
 	};
 }
 
-function responseFor(state: SessionState) {
-	const prunedState = pruneAudience(state);
+function responseFor(control: ControlState, audience: AudienceState) {
+	const prunedAudience = pruneAudience(audience);
 
 	return NextResponse.json({
 		type: "state",
-		leftVolume: prunedState.leftVolume,
-		rightVolume: prunedState.rightVolume,
-		conductorActive: prunedState.conductorActive,
-		updatedAt: prunedState.updatedAt,
-		userCount: counts(prunedState),
+		leftVolume: control.leftVolume,
+		rightVolume: control.rightVolume,
+		conductorActive: control.conductorActive,
+		updatedAt: Math.max(control.updatedAt, prunedAudience.updatedAt),
+		volumeSequence: control.volumeSequence,
+		userCount: counts(prunedAudience),
 	});
 }
 
-async function readSession(sessionId: string) {
-	const cached = await cache.get(sessionKey(sessionId));
+async function readControl(sessionId: string) {
+	const cached = await cache.get(controlKey(sessionId));
 
 	if (
 		cached &&
 		typeof cached === "object" &&
 		"leftVolume" in cached &&
-		"rightVolume" in cached &&
-		"audience" in cached
+		"rightVolume" in cached
 	) {
-		return cached as SessionState;
+		return {
+			...initialControlState(),
+			...(cached as Partial<ControlState>),
+		};
 	}
 
-	return initialState();
+	return initialControlState();
 }
 
-async function writeSession(sessionId: string, state: SessionState) {
-	await cache.set(sessionKey(sessionId), state, {
-		name: `Crowd Symphony ${sessionId}`,
-		tags: [`session:${sessionId}`],
+async function readAudience(sessionId: string) {
+	const cached = await cache.get(audienceKey(sessionId));
+
+	if (cached && typeof cached === "object" && "audience" in cached) {
+		return {
+			...initialAudienceState(),
+			...(cached as Partial<AudienceState>),
+		};
+	}
+
+	return initialAudienceState();
+}
+
+async function writeControl(sessionId: string, state: ControlState) {
+	await cache.set(controlKey(sessionId), state, {
+		name: `Crowd Symphony control ${sessionId}`,
+		tags: [`control:${sessionId}`],
+		ttl: sessionTtlSeconds,
+	});
+}
+
+async function writeAudience(sessionId: string, state: AudienceState) {
+	await cache.set(audienceKey(sessionId), state, {
+		name: `Crowd Symphony audience ${sessionId}`,
+		tags: [`audience:${sessionId}`],
 		ttl: sessionTtlSeconds,
 	});
 }
@@ -154,10 +203,14 @@ export async function GET(request: Request) {
 		);
 	}
 
-	const state = pruneAudience(await readSession(sessionId));
-	await writeSession(sessionId, state);
+	const [control, audience] = await Promise.all([
+		readControl(sessionId),
+		readAudience(sessionId),
+	]);
+	const prunedAudience = pruneAudience(audience);
+	await writeAudience(sessionId, prunedAudience);
 
-	return responseFor(state);
+	return responseFor(control, prunedAudience);
 }
 
 export async function POST(request: Request) {
@@ -172,21 +225,30 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const state = pruneAudience(await readSession(body.sessionId));
-
 	if (body.role === "conductor") {
+		const control = await readControl(body.sessionId);
+
 		if (body.type === "volumeChange") {
-			state.leftVolume = safeNumber(body.leftVolume, state.leftVolume);
-			state.rightVolume = safeNumber(body.rightVolume, state.rightVolume);
+			const sequence = safeSequence(body.sequence, control.volumeSequence + 1);
+			if (sequence >= control.volumeSequence) {
+				control.leftVolume = safeNumber(body.leftVolume, control.leftVolume);
+				control.rightVolume = safeNumber(body.rightVolume, control.rightVolume);
+				control.volumeSequence = sequence;
+			}
 		}
 
 		if (body.type === "conductorStart") {
-			state.conductorActive = true;
+			control.conductorActive = true;
 		}
 
 		if (body.type === "conductorStop") {
-			state.conductorActive = false;
+			control.conductorActive = false;
 		}
+
+		control.updatedAt = Date.now();
+		await writeControl(body.sessionId, control);
+
+		return responseFor(control, await readAudience(body.sessionId));
 	}
 
 	if (body.role === "audience") {
@@ -197,14 +259,19 @@ export async function POST(request: Request) {
 			);
 		}
 
-		state.audience[body.clientId] = {
+		const audience = pruneAudience(await readAudience(body.sessionId));
+		audience.audience[body.clientId] = {
 			section: body.section,
 			lastSeen: Date.now(),
 		};
+		audience.updatedAt = Date.now();
+		await writeAudience(body.sessionId, audience);
+
+		return responseFor(await readControl(body.sessionId), audience);
 	}
 
-	state.updatedAt = Date.now();
-	await writeSession(body.sessionId, state);
-
-	return responseFor(state);
+	return NextResponse.json(
+		{ error: "Unsupported realtime message." },
+		{ status: 400 },
+	);
 }

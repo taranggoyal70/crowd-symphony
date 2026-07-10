@@ -30,7 +30,7 @@ export default function ConductorPage() {
 	const [showQR, setShowQR] = useState(false);
 	const handsRef = useRef<any>(null);
 	const latestVolumesRef = useRef({ leftVolume: 50, rightVolume: 50 });
-	const isPublishingVolumeRef = useRef(false);
+	const publishSequenceRef = useRef(0);
 
 	// Generate session ID on client-side only
 	useEffect(() => {
@@ -80,7 +80,7 @@ export default function ConductorPage() {
 			null;
 
 		const publishLatestVolume = () => {
-			if (stopped || isPublishingVolumeRef.current) return;
+			if (stopped) return;
 
 			const next = latestVolumesRef.current;
 			if (
@@ -91,23 +91,19 @@ export default function ConductorPage() {
 				return;
 			}
 
-			isPublishingVolumeRef.current = true;
+			lastPublished = next;
+			const sequence = ++publishSequenceRef.current;
 			postRealtimeMessage({
 				role: "conductor",
 				sessionId,
 				type: "volumeChange",
 				leftVolume: next.leftVolume,
 				rightVolume: next.rightVolume,
-			})
-				.then(() => {
-					lastPublished = next;
-				})
-				.catch((error) => {
-					console.error("Realtime volume publish failed:", error);
-				})
-				.finally(() => {
-					isPublishingVolumeRef.current = false;
-				});
+				sequence,
+			}).catch((error) => {
+				lastPublished = null;
+				console.error("Realtime volume publish failed:", error);
+			});
 		};
 
 		publishLatestVolume();
