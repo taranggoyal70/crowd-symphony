@@ -7,6 +7,9 @@ export type RealtimeState = {
 	conductorActive: boolean;
 	updatedAt: number;
 	volumeSequence: number;
+	selectedTrack: number;
+	eventName: string;
+	effectMode: "symphony" | "bass-drop" | "strobe";
 	userCount: {
 		left: number;
 		right: number;
@@ -37,6 +40,21 @@ type AudienceHeartbeat = {
 	section: Section;
 };
 
+type HostMessage =
+	| {
+			role: "host";
+			sessionId: string;
+			type: "hostUpdate";
+			selectedTrack?: number;
+			eventName?: string;
+			effectMode?: RealtimeState["effectMode"];
+	  }
+	| {
+			role: "host";
+			sessionId: string;
+			type: "showStart" | "showStop";
+	  };
+
 export function createClientId() {
 	return crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
 }
@@ -57,7 +75,7 @@ export async function getRealtimeState(sessionId: string) {
 }
 
 export async function postRealtimeMessage(
-	message: ConductorMessage | AudienceHeartbeat,
+	message: ConductorMessage | AudienceHeartbeat | HostMessage,
 ) {
 	const response = await fetch("/api/realtime", {
 		method: "POST",

@@ -14,6 +14,9 @@ type ControlState = {
 	conductorActive: boolean;
 	updatedAt: number;
 	volumeSequence: number;
+	selectedTrack: number;
+	eventName: string;
+	effectMode: "symphony" | "bass-drop" | "strobe";
 };
 
 type AudienceState = {
@@ -41,6 +44,19 @@ type RealtimePostBody =
 			type: "heartbeat";
 			clientId: string;
 			section: Section;
+	  }
+	| {
+			role: "host";
+			sessionId: string;
+			type: "hostUpdate";
+			selectedTrack?: number;
+			eventName?: string;
+			effectMode?: ControlState["effectMode"];
+	  }
+	| {
+			role: "host";
+			sessionId: string;
+			type: "showStart" | "showStop";
 	  };
 
 export const runtime = "nodejs";
@@ -58,6 +74,9 @@ function initialControlState(): ControlState {
 		conductorActive: false,
 		updatedAt: Date.now(),
 		volumeSequence: 0,
+		selectedTrack: 0,
+		eventName: "Crowd Symphony",
+		effectMode: "symphony",
 	};
 }
 
@@ -102,6 +121,27 @@ function safeSequence(value: unknown, fallback: number) {
 	return Math.max(0, Math.round(value));
 }
 
+function safeTrackIndex(value: unknown, fallback: number) {
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return fallback;
+	}
+
+	return Math.max(0, Math.min(4, Math.round(value)));
+}
+
+function safeEventName(value: unknown, fallback: string) {
+	if (typeof value !== "string") {
+		return fallback;
+	}
+
+	const cleaned = value.trim().slice(0, 60);
+	return cleaned || fallback;
+}
+
+function isEffectMode(value: unknown): value is ControlState["effectMode"] {
+	return value === "symphony" || value === "bass-drop" || value === "strobe";
+}
+
 function pruneAudience(state: AudienceState) {
 	const now = Date.now();
 	for (const [clientId, member] of Object.entries(state.audience)) {
@@ -141,6 +181,9 @@ function responseFor(control: ControlState, audience: AudienceState) {
 		conductorActive: control.conductorActive,
 		updatedAt: Math.max(control.updatedAt, prunedAudience.updatedAt),
 		volumeSequence: control.volumeSequence,
+		selectedTrack: control.selectedTrack,
+		eventName: control.eventName,
+		effectMode: control.effectMode,
 		userCount: counts(prunedAudience),
 	});
 }
@@ -242,6 +285,34 @@ export async function POST(request: Request) {
 		}
 
 		if (body.type === "conductorStop") {
+			control.conductorActive = false;
+		}
+
+		control.updatedAt = Date.now();
+		await writeControl(body.sessionId, control);
+
+		return responseFor(control, await readAudience(body.sessionId));
+	}
+
+	if (body.role === "host") {
+		const control = await readControl(body.sessionId);
+
+		if (body.type === "hostUpdate") {
+			control.selectedTrack = safeTrackIndex(
+				body.selectedTrack,
+				control.selectedTrack,
+			);
+			control.eventName = safeEventName(body.eventName, control.eventName);
+			control.effectMode = isEffectMode(body.effectMode)
+				? body.effectMode
+				: control.effectMode;
+		}
+
+		if (body.type === "showStart") {
+			control.conductorActive = true;
+		}
+
+		if (body.type === "showStop") {
 			control.conductorActive = false;
 		}
 

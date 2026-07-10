@@ -34,7 +34,10 @@ export default function ConductorPage() {
 
 	// Generate session ID on client-side only
 	useEffect(() => {
-		setSessionId(Math.random().toString(36).substr(2, 9));
+		const urlSession = new URLSearchParams(window.location.search).get(
+			"session",
+		);
+		setSessionId(urlSession || Math.random().toString(36).substr(2, 9));
 	}, []);
 
 	// Keep conductor-side user counts fresh while the session is open.

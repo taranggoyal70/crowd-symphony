@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Music, Users, Wand2 } from "lucide-react";
+import { MonitorUp, Music, Users, Wand2 } from "lucide-react";
 import Link from "next/link";
 
 export default function Home() {
@@ -28,7 +28,33 @@ export default function Home() {
 				</motion.div>
 
 				{/* Options */}
-				<div className="grid md:grid-cols-2 gap-8">
+				<div className="grid md:grid-cols-3 gap-8">
+					<motion.div
+						initial={{ opacity: 0, y: 30 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.1 }}
+					>
+						<Link href="/host">
+							<div className="bg-gradient-to-br from-yellow-500 to-orange-600 p-8 rounded-2xl hover:scale-105 transition cursor-pointer group h-full">
+								<div className="flex items-center justify-center mb-6">
+									<MonitorUp className="w-16 h-16 text-white group-hover:animate-pulse" />
+								</div>
+								<h2 className="text-3xl font-bold text-white text-center mb-4">
+									Host Event Room
+								</h2>
+								<p className="text-gray-100 text-center">
+									Create a room, project the QR code, switch tracks, and manage
+									the whole crowd experience.
+								</p>
+								<div className="mt-6 text-center">
+									<span className="inline-block px-6 py-3 bg-white/20 rounded-full text-white font-semibold">
+										Launch Room →
+									</span>
+								</div>
+							</div>
+						</Link>
+					</motion.div>
+
 					{/* Conductor */}
 					<motion.div
 						initial={{ opacity: 0, x: -50 }}

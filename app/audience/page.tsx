@@ -9,6 +9,7 @@ import {
 	getRealtimeState,
 	postRealtimeMessage,
 } from "@/lib/realtime";
+import { crowdTracks } from "@/lib/tracks";
 
 function AudienceContent() {
 	const searchParams = useSearchParams();
@@ -24,30 +25,10 @@ function AudienceContent() {
 	const [shakeEffect, setShakeEffect] = useState(false);
 	const [audioError, setAudioError] = useState<string | null>(null);
 	const [conductorActive, setConductorActive] = useState(false);
-
-	// Music tracks - add your own!
-	const tracks = [
-		{
-			name: "Epic Orchestra",
-			url: "/music/orchestra.mp3",
-		},
-		{
-			name: "Epic Dubstep Mix",
-			url: "/music/dubstep.mp3",
-		},
-		{
-			name: "Electronic Beat",
-			url: "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3",
-		},
-		{
-			name: "Dubstep Drop",
-			url: "https://cdn.pixabay.com/audio/2022/03/10/audio_4deafc42d2.mp3",
-		},
-		{
-			name: "Bass House",
-			url: "https://cdn.pixabay.com/audio/2022/08/02/audio_884fe5c21c.mp3",
-		},
-	];
+	const [eventName, setEventName] = useState("Crowd Symphony");
+	const [effectMode, setEffectMode] = useState<
+		"symphony" | "bass-drop" | "strobe"
+	>("symphony");
 
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
@@ -58,6 +39,7 @@ function AudienceContent() {
 	const waveAnimationRef = useRef<number | null>(null);
 	const clientIdRef = useRef(createClientId());
 	const conductorWasActiveRef = useRef(false);
+	const previousTrackRef = useRef(selectedTrack);
 
 	// Register this audience device and poll conductor state.
 	useEffect(() => {
@@ -75,6 +57,9 @@ function AudienceContent() {
 				setVolume(newVolume);
 				setConnectedUsers(state.userCount.total);
 				setConductorActive(state.conductorActive);
+				setSelectedTrack(state.selectedTrack);
+				setEventName(state.eventName);
+				setEffectMode(state.effectMode);
 
 				if (gainNodeRef.current) {
 					// Smooth volume transition
@@ -282,6 +267,26 @@ function AudienceContent() {
 		}
 	};
 
+	useEffect(() => {
+		if (!audioRef.current || previousTrackRef.current === selectedTrack) {
+			previousTrackRef.current = selectedTrack;
+			return;
+		}
+
+		previousTrackRef.current = selectedTrack;
+		audioRef.current.load();
+
+		if (isPlaying) {
+			audioRef.current.play().catch((error) => {
+				console.error("Track switch playback failed:", error);
+				setAudioError(
+					"Track changed. Tap Enable Sound again if playback stopped.",
+				);
+				setIsPlaying(false);
+			});
+		}
+	}, [selectedTrack, isPlaying]);
+
 	if (!sessionId) {
 		return (
 			<div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -473,6 +478,9 @@ function AudienceContent() {
 					<h1 className="text-4xl font-bold text-white mb-2 uppercase tracking-wider">
 						{section === "left" ? "Left" : "Right"} Side
 					</h1>
+					<p className="mb-2 text-sm font-bold uppercase tracking-[0.3em] text-yellow-300">
+						{eventName}
+					</p>
 					<div className="flex items-center justify-center space-x-2 text-gray-400">
 						<Users className="w-4 h-4" />
 						<span>{connectedUsers} in the crowd</span>
@@ -644,7 +652,7 @@ function AudienceContent() {
 								Choose Your Track
 							</p>
 							<div className="grid grid-cols-2 gap-2">
-								{tracks.map((track, index) => (
+								{crowdTracks.map((track, index) => (
 									<button
 										key={index}
 										onClick={() => {
@@ -680,7 +688,7 @@ function AudienceContent() {
 									: `bg-gradient-to-r ${sectionColor} hover:opacity-90`
 							}`}
 						>
-							{isPlaying ? "⏸ Pause" : "▶ Drop It"}
+							{isPlaying ? "⏸ Pause" : "▶ Enable Sound"}
 						</motion.button>
 						{audioError && (
 							<p className="mt-3 text-center text-sm text-yellow-300">
@@ -721,6 +729,16 @@ function AudienceContent() {
 								<div className="mt-3 flex items-center justify-between text-sm">
 									<span className="text-gray-400">Volume</span>
 									<span className="font-bold text-white">{volume}%</span>
+								</div>
+								<div className="mt-3 flex items-center justify-between text-sm">
+									<span className="text-gray-400">Effect</span>
+									<span className="font-bold text-violet-200">
+										{effectMode === "bass-drop"
+											? "Bass Drop"
+											: effectMode === "strobe"
+												? "Strobe"
+												: "Symphony"}
+									</span>
 								</div>
 							</div>
 
@@ -779,7 +797,7 @@ function AudienceContent() {
 					loop
 					crossOrigin="anonymous"
 					preload="auto"
-					src={tracks[selectedTrack].url}
+					src={crowdTracks[selectedTrack]?.url ?? crowdTracks[0].url}
 				/>
 			</div>
 		</div>
