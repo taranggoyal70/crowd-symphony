@@ -13,6 +13,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import { getRealtimeState, postRealtimeMessage } from "@/lib/realtime";
+import { handHeightToVolume, smoothVolume } from "@/lib/audio-mapping";
 
 export default function ConductorPage() {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -193,7 +194,7 @@ export default function ConductorPage() {
 				const wrist = landmarks[0];
 				const middleTip = landmarks[12];
 				const avgY = (wrist.y + middleTip.y) / 2;
-				const handVolume = Math.round((1 - avgY) * 100);
+				const handVolume = handHeightToVolume(avgY);
 
 				if (isLeftSide) {
 					leftHandY = handVolume;
@@ -209,18 +210,12 @@ export default function ConductorPage() {
 
 			if (leftHandY !== null) {
 				const handValue = leftHandY;
-				setLeftVolume((prev) => {
-					const diff = handValue - prev;
-					return Math.round(prev + diff * 0.3);
-				});
+				setLeftVolume((prev) => smoothVolume(prev, handValue));
 			}
 
 			if (rightHandY !== null) {
 				const handValue = rightHandY;
-				setRightVolume((prev) => {
-					const diff = handValue - prev;
-					return Math.round(prev + diff * 0.3);
-				});
+				setRightVolume((prev) => smoothVolume(prev, handValue));
 			}
 		} else {
 			setHandsDetected({ left: false, right: false });
