@@ -1,35 +1,37 @@
 {
-	"name": "crowd-symphony",
-	"version": "0.1.0",
-	"private": true,
-	"scripts": {
-		"dev": "vercel dev",
-		"dev:next": "next dev",
-		"build": "next build",
-		"start": "next start",
-		"lint": "biome check",
-		"format": "biome format --write"
-	},
-	"dependencies": {
-		"@mediapipe/camera_utils": "^0.3.1675466862",
-		"@mediapipe/hands": "^0.4.1675469240",
-		"@vercel/functions": "^3.7.5",
-		"framer-motion": "^12.23.24",
-		"lucide-react": "^0.555.0",
-		"next": "^16.0.10",
-		"qrcode.react": "^4.2.0",
-		"react": "19.2.0",
-		"react-dom": "19.2.0"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "2.2.0",
-		"@tailwindcss/postcss": "^4",
-		"@types/node": "^20",
-		"@types/react": "^19",
-		"@types/react-dom": "^19",
-		"babel-plugin-react-compiler": "1.0.0",
-		"tailwindcss": "^4",
-		"typescript": "^5",
-		"vercel": "^54.21.0"
-	}
+  "name": "crowd-symphony",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "dev:next": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check",
+    "format": "biome format --write",
+    "test:unit": "node --import tsx --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/hands": "^0.4.1675469240",
+    "@vercel/functions": "^3.7.5",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.555.0",
+    "next": "^16.0.10",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.2.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vercel": "^54.21.0",
+    "tsx": "^4.19.2"
+  }
 }
