@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { handHeightToVolume, smoothVolume } from "../lib/audio-mapping.ts";
+import { handHeightToVolume, smoothVolume } from "../lib/audio-mapping";
 
 test("hand at top of frame is full volume, bottom is silence", () => {
 	assert.equal(handHeightToVolume(0), 100);
