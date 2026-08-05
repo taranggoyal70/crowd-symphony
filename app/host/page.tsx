@@ -148,7 +148,7 @@ export default function HostPage() {
 	const conductorActive = state?.conductorActive ?? false;
 
 	return (
-		<div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#6d28d9_0,#09090b_28%,#000_70%)] text-white">
+		<div className="crowd-host-shell min-h-screen text-white">
 			<div className="mx-auto max-w-7xl px-5 py-6">
 				<header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 					<div>

@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
-import { getRealtimeState, postRealtimeMessage } from "@/lib/realtime";
 import { handHeightToVolume, smoothVolume } from "@/lib/audio-mapping";
+import { getRealtimeState, postRealtimeMessage } from "@/lib/realtime";
 
 export default function ConductorPage() {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -369,10 +369,10 @@ export default function ConductorPage() {
 	const totalUsers = connectedUsers.left + connectedUsers.right;
 
 	return (
-		<div className="min-h-screen bg-black">
+		<div className="crowd-conductor-shell min-h-screen bg-black">
 			<div className="p-6 max-w-[1920px] mx-auto">
 				{/* Top Bar */}
-				<div className="mb-6 bg-zinc-900 rounded-lg p-5 border border-zinc-800">
+				<div className="crowd-conductor-header mb-6 bg-zinc-900 rounded-lg p-5 border border-zinc-800">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center space-x-4">
 							<div className="text-3xl font-bold text-white tracking-tight">
@@ -412,7 +412,7 @@ export default function ConductorPage() {
 					</div>
 				</div>
 
-				<div className="grid lg:grid-cols-3 gap-6">
+				<div className="crowd-conductor-grid grid lg:grid-cols-3 gap-6">
 					{/* Main Section */}
 					<div className="lg:col-span-2 space-y-6">
 						{/* Camera */}

@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Music, Users, Zap } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import {
 	type CrowdMoment,
 	createClientId,
@@ -13,8 +13,12 @@ import {
 import { crowdTracks } from "@/lib/tracks";
 
 function AudienceContent() {
+	const router = useRouter();
 	const searchParams = useSearchParams();
 	const sessionId = searchParams.get("session");
+	const joinTitleId = useId();
+	const roomCodeId = useId();
+	const [roomCode, setRoomCode] = useState("");
 
 	const [section, setSection] = useState<"left" | "right" | null>(null);
 	const [volume, setVolume] = useState(50);
@@ -333,85 +337,146 @@ function AudienceContent() {
 
 	if (!sessionId) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
-				<div className="text-center">
-					<h1 className="text-4xl font-bold text-white mb-4">
-						Invalid Session
-					</h1>
-					<p className="text-gray-300">
-						Please scan the QR code from the conductor
-					</p>
-				</div>
-			</div>
+			<main className="crowd-audience-entry">
+				<div className="crowd-audience-entry-grid" aria-hidden="true" />
+				<header className="crowd-audience-mini-nav">
+					<span className="crowd-brand-mark">
+						<span />
+						<span />
+						<span />
+					</span>
+					<strong>Crowd Symphony</strong>
+					<span>Audience channel</span>
+				</header>
+				<section className="crowd-audience-join" aria-labelledby={joinTitleId}>
+					<div className="crowd-audience-join-copy">
+						<p>
+							<Zap size={14} /> Phone becomes instrument
+						</p>
+						<h1 id={joinTitleId}>
+							Step into
+							<br />
+							<span>the signal.</span>
+						</h1>
+						<small>
+							Enter the room code on the host screen. No app, account, or
+							pairing ritual required.
+						</small>
+					</div>
+					<form
+						className="crowd-room-form"
+						onSubmit={(event) => {
+							event.preventDefault();
+							const normalizedCode = roomCode.trim().toUpperCase();
+							if (normalizedCode)
+								router.push(
+									`/audience?session=${encodeURIComponent(normalizedCode)}`,
+								);
+						}}
+					>
+						<label htmlFor={roomCodeId}>Room code</label>
+						<div>
+							<input
+								id={roomCodeId}
+								value={roomCode}
+								onChange={(event) => setRoomCode(event.target.value)}
+								placeholder="CS-2025"
+								autoComplete="off"
+								maxLength={12}
+							/>
+							<button type="submit" disabled={!roomCode.trim()}>
+								Join signal <ArrowRight size={18} />
+							</button>
+						</div>
+						<p>
+							<span /> Waiting for your room
+						</p>
+					</form>
+				</section>
+				<footer className="crowd-audience-entry-footer">
+					<span>01 · Join</span>
+					<span>02 · Choose side</span>
+					<span>03 · Enable sound</span>
+				</footer>
+			</main>
 		);
 	}
 
 	if (!section) {
 		return (
-			<div className="min-h-screen bg-black flex items-center justify-center p-4">
-				<div className="max-w-2xl w-full">
-					<motion.div
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						className="text-center mb-12"
-					>
-						<motion.div
-							animate={{ scale: [1, 1.2, 1] }}
-							transition={{ duration: 1, repeat: Infinity }}
-						>
-							<Zap className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
-						</motion.div>
-						<h1 className="text-5xl font-bold text-white mb-4 uppercase tracking-wider">
-							Choose Your Side
+			<main className="crowd-side-select">
+				<header className="crowd-side-select-head">
+					<div>
+						<span className="crowd-brand-mark">
+							<span />
+							<span />
+							<span />
+						</span>
+						<strong>Crowd Symphony</strong>
+					</div>
+					<p>
+						Room <b>{sessionId}</b> · Signal found
+					</p>
+				</header>
+				<div className="crowd-side-select-body">
+					<motion.div className="crowd-side-select-copy">
+						<p>
+							<Zap size={14} /> Channel assignment
+						</p>
+						<h1>
+							Choose your
+							<br />
+							<span>side of the room.</span>
 						</h1>
-						<p className="text-gray-400 text-lg">Join the bass revolution</p>
+						<small>
+							The conductor shapes each channel independently. Pick the side you
+							are physically standing on.
+						</small>
 					</motion.div>
 
-					<div className="grid md:grid-cols-2 gap-6">
-						{/* Left Section */}
+					<div className="crowd-side-options">
 						<motion.button
-							initial={{ opacity: 0, x: -50 }}
-							animate={{ opacity: 1, x: 0 }}
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
+							whileHover={{ y: -4 }}
+							whileTap={{ scale: 0.98 }}
 							onClick={() => selectSection("left")}
-							className="relative bg-gradient-to-br from-green-600 to-emerald-600 p-16 rounded-2xl group overflow-hidden"
+							className="crowd-side-option crowd-side-option-left"
 						>
-							<motion.div
-								className="absolute inset-0 bg-green-400/20"
-								animate={{ scale: [1, 1.5, 1] }}
-								transition={{ duration: 2, repeat: Infinity }}
-							/>
-							<ArrowLeft className="w-20 h-20 text-white mx-auto mb-4 group-hover:animate-pulse relative z-10" />
-							<h2 className="text-4xl font-bold text-white mb-2 uppercase relative z-10">
-								Left
-							</h2>
-							<p className="text-gray-100 text-lg relative z-10">Bass Side</p>
+							<span>Channel L</span>
+							<ArrowLeft size={34} />
+							<h2>Left</h2>
+							<p>Coral channel · stand left of stage</p>
+							<div aria-hidden="true">
+								{[24, 58, 36, 80, 48, 66, 30, 72].map((height, index) => (
+									<i
+										key={`${height}-${index}`}
+										style={{ height: `${height}%` }}
+									/>
+								))}
+							</div>
 						</motion.button>
 
-						{/* Right Section */}
 						<motion.button
-							initial={{ opacity: 0, x: 50 }}
-							animate={{ opacity: 1, x: 0 }}
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
+							whileHover={{ y: -4 }}
+							whileTap={{ scale: 0.98 }}
 							onClick={() => selectSection("right")}
-							className="relative bg-gradient-to-br from-purple-600 to-pink-600 p-16 rounded-2xl group overflow-hidden"
+							className="crowd-side-option crowd-side-option-right"
 						>
-							<motion.div
-								className="absolute inset-0 bg-purple-400/20"
-								animate={{ scale: [1, 1.5, 1] }}
-								transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-							/>
-							<ArrowRight className="w-20 h-20 text-white mx-auto mb-4 group-hover:animate-pulse relative z-10" />
-							<h2 className="text-4xl font-bold text-white mb-2 uppercase relative z-10">
-								Right
-							</h2>
-							<p className="text-gray-100 text-lg relative z-10">Drop Side</p>
+							<span>Channel R</span>
+							<ArrowRight size={34} />
+							<h2>Right</h2>
+							<p>Cyan channel · stand right of stage</p>
+							<div aria-hidden="true">
+								{[46, 28, 72, 38, 84, 52, 68, 34].map((height, index) => (
+									<i
+										key={`${height}-${index}`}
+										style={{ height: `${height}%` }}
+									/>
+								))}
+							</div>
 						</motion.button>
 					</div>
 				</div>
-			</div>
+			</main>
 		);
 	}
 
@@ -424,7 +489,7 @@ function AudienceContent() {
 
 	return (
 		<div
-			className={`min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden ${shakeEffect ? "animate-shake" : ""}`}
+			className={`crowd-audience-live min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden ${shakeEffect ? "animate-shake" : ""}`}
 		>
 			{/* Animated Background Particles */}
 			<div className="absolute inset-0">
