@@ -1,138 +1,203 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MonitorUp, Music, Users, Wand2 } from "lucide-react";
+import {
+	ArrowRight,
+	CircleDot,
+	Github,
+	MonitorUp,
+	Radio,
+	Smartphone,
+	Users,
+	WandSparkles,
+} from "lucide-react";
 import Link from "next/link";
+
+const waveform = [
+	26, 48, 34, 72, 44, 88, 58, 100, 68, 42, 78, 54, 94, 66, 38, 70, 50, 82, 46,
+	62, 36, 76, 52, 92, 64, 40, 74, 48, 86, 56, 32, 68, 44, 80,
+];
+
+const modes = [
+	{
+		href: "/host",
+		label: "Host the room",
+		description: "Create a room, choose the set, and project the crowd link.",
+		icon: MonitorUp,
+		tone: "coral",
+		meta: "Control desk",
+	},
+	{
+		href: "/conductor",
+		label: "Conduct live",
+		description:
+			"Use hand movement to shape volume across the room in real time.",
+		icon: WandSparkles,
+		tone: "lime",
+		meta: "Camera + gestures",
+	},
+	{
+		href: "/audience",
+		label: "Join the crowd",
+		description:
+			"Enter a room code and turn your phone into part of the performance.",
+		icon: Smartphone,
+		tone: "cyan",
+		meta: "No app required",
+	},
+];
 
 export default function Home() {
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
-			<div className="max-w-4xl w-full">
-				{/* Header */}
-				<motion.div
-					initial={{ opacity: 0, y: -20 }}
-					animate={{ opacity: 1, y: 0 }}
-					className="text-center mb-12"
-				>
-					<motion.div
-						animate={{ rotate: [0, 10, -10, 0] }}
-						transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-						className="inline-block mb-4"
+		<main className="crowd-home">
+			<nav className="crowd-nav" aria-label="Primary navigation">
+				<Link className="crowd-brand" href="/">
+					<span className="crowd-brand-mark" aria-hidden="true">
+						<span />
+						<span />
+						<span />
+					</span>
+					<span>Crowd Symphony</span>
+				</Link>
+				<div className="crowd-nav-actions">
+					<span className="crowd-live-state">
+						<CircleDot size={14} /> Live system
+					</span>
+					<a
+						className="crowd-icon-link"
+						href="https://github.com/taranggoyal70/crowd-symphony"
+						target="_blank"
+						rel="noreferrer"
+						aria-label="View Crowd Symphony on GitHub"
 					>
-						<Music className="w-20 h-20 text-yellow-400" />
-					</motion.div>
-					<h1 className="text-6xl font-bold text-white mb-4">Crowd Symphony</h1>
-					<p className="text-xl text-gray-300">
-						Control the music with your hands. Conduct the crowd.
-					</p>
-				</motion.div>
+						<Github size={18} />
+					</a>
+				</div>
+			</nav>
 
-				{/* Options */}
-				<div className="grid md:grid-cols-3 gap-8">
-					<motion.div
-						initial={{ opacity: 0, y: 30 }}
+			<section className="crowd-hero">
+				<div className="crowd-hero-copy">
+					<motion.p
+						initial={{ opacity: 0, y: 12 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.1 }}
+						className="crowd-kicker"
 					>
-						<Link href="/host">
-							<div className="bg-gradient-to-br from-yellow-500 to-orange-600 p-8 rounded-2xl hover:scale-105 transition cursor-pointer group h-full">
-								<div className="flex items-center justify-center mb-6">
-									<MonitorUp className="w-16 h-16 text-white group-hover:animate-pulse" />
-								</div>
-								<h2 className="text-3xl font-bold text-white text-center mb-4">
-									Host Event Room
-								</h2>
-								<p className="text-gray-100 text-center">
-									Create a room, project the QR code, switch tracks, and manage
-									the whole crowd experience.
-								</p>
-								<div className="mt-6 text-center">
-									<span className="inline-block px-6 py-3 bg-white/20 rounded-full text-white font-semibold">
-										Launch Room →
-									</span>
-								</div>
-							</div>
-						</Link>
-					</motion.div>
-
-					{/* Conductor */}
+						<Radio size={15} /> Multi-device live music
+					</motion.p>
+					<motion.h1
+						initial={{ opacity: 0, y: 18 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.08 }}
+					>
+						One room.
+						<span>Every phone.</span>
+						Your hands.
+					</motion.h1>
+					<motion.p
+						initial={{ opacity: 0, y: 18 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.15 }}
+						className="crowd-intro"
+					>
+						Conduct a synchronized crowd from your browser. Hand gestures shape
+						the music while every connected phone becomes part of the show.
+					</motion.p>
 					<motion.div
-						initial={{ opacity: 0, x: -50 }}
-						animate={{ opacity: 1, x: 0 }}
-						transition={{ delay: 0.2 }}
+						initial={{ opacity: 0, y: 18 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.22 }}
+						className="crowd-primary-actions"
 					>
-						<Link href="/conductor">
-							<div className="bg-gradient-to-br from-purple-600 to-pink-600 p-8 rounded-2xl hover:scale-105 transition cursor-pointer group h-full">
-								<div className="flex items-center justify-center mb-6">
-									<Wand2 className="w-16 h-16 text-white group-hover:animate-bounce" />
-								</div>
-								<h2 className="text-3xl font-bold text-white text-center mb-4">
-									Be the Conductor
-								</h2>
-								<p className="text-gray-100 text-center">
-									Use your laptop camera and hand gestures to control the music
-									volume for everyone in real-time.
-								</p>
-								<div className="mt-6 text-center">
-									<span className="inline-block px-6 py-3 bg-white/20 rounded-full text-white font-semibold">
-										Start Conducting →
-									</span>
-								</div>
-							</div>
+						<Link className="crowd-primary-button" href="/host">
+							<MonitorUp size={18} /> Start an event <ArrowRight size={17} />
 						</Link>
-					</motion.div>
-
-					{/* Audience */}
-					<motion.div
-						initial={{ opacity: 0, x: 50 }}
-						animate={{ opacity: 1, x: 0 }}
-						transition={{ delay: 0.4 }}
-					>
-						<Link href="/audience">
-							<div className="bg-gradient-to-br from-blue-600 to-cyan-600 p-8 rounded-2xl hover:scale-105 transition cursor-pointer group h-full">
-								<div className="flex items-center justify-center mb-6">
-									<Users className="w-16 h-16 text-white group-hover:animate-pulse" />
-								</div>
-								<h2 className="text-3xl font-bold text-white text-center mb-4">
-									Join as Audience
-								</h2>
-								<p className="text-gray-100 text-center">
-									Scan the QR code, choose your section (left/right), and let
-									the conductor control the music on your phone.
-								</p>
-								<div className="mt-6 text-center">
-									<span className="inline-block px-6 py-3 bg-white/20 rounded-full text-white font-semibold">
-										Join Now →
-									</span>
-								</div>
-							</div>
+						<Link className="crowd-text-link" href="/audience">
+							I have a room code <ArrowRight size={16} />
 						</Link>
 					</motion.div>
 				</div>
 
-				{/* Features */}
 				<motion.div
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.6 }}
-					className="mt-12 text-center"
+					initial={{ opacity: 0, scale: 0.97 }}
+					animate={{ opacity: 1, scale: 1 }}
+					transition={{ delay: 0.12, duration: 0.55 }}
+					className="crowd-stage"
+					aria-label="Live audio visualization"
 				>
-					<div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-						<div className="text-white">
-							<div className="text-3xl font-bold text-yellow-400">🎵</div>
-							<div className="text-sm mt-2">Real-time Sync</div>
+					<div className="crowd-stage-topline">
+						<span>Room CS-2025</span>
+						<span className="crowd-stage-status">Broadcast ready</span>
+					</div>
+					<div className="crowd-stage-center">
+						<div className="crowd-wave" aria-hidden="true">
+							{waveform.map((height, index) => (
+								<motion.span
+									key={`${height}-${index}`}
+									style={{ height: `${height}%` }}
+									animate={{ scaleY: [0.55, 1, 0.7] }}
+									transition={{
+										duration: 1.15 + (index % 5) * 0.12,
+										repeat: Number.POSITIVE_INFINITY,
+										repeatType: "mirror",
+										delay: index * 0.025,
+									}}
+								/>
+							))}
 						</div>
-						<div className="text-white">
-							<div className="text-3xl font-bold text-yellow-400">👋</div>
-							<div className="text-sm mt-2">Gesture Control</div>
+						<div className="crowd-hand-readout">
+							<span>Gesture input</span>
+							<strong>68%</strong>
+							<small>Right channel rising</small>
 						</div>
-						<div className="text-white">
-							<div className="text-3xl font-bold text-yellow-400">🎭</div>
-							<div className="text-sm mt-2">Left & Right Sections</div>
+					</div>
+					<div className="crowd-stage-footer">
+						<div>
+							<Users size={15} />
+							<span>124 connected</span>
+						</div>
+						<div>
+							<span className="crowd-channel-dot coral" />
+							Left 62%
+						</div>
+						<div>
+							<span className="crowd-channel-dot cyan" />
+							Right 68%
 						</div>
 					</div>
 				</motion.div>
-			</div>
-		</div>
+			</section>
+
+			<section className="crowd-mode-strip">
+				<div className="crowd-section-heading">
+					<p>Choose your place in the room</p>
+					<h2>Three screens. One performance.</h2>
+				</div>
+				<div className="crowd-mode-grid">
+					{modes.map((mode) => (
+						<div key={mode.href}>
+							<Link
+								className={`crowd-mode crowd-mode-${mode.tone}`}
+								href={mode.href}
+							>
+								<div className="crowd-mode-icon">
+									<mode.icon size={24} />
+								</div>
+								<span className="crowd-mode-meta">{mode.meta}</span>
+								<h3>{mode.label}</h3>
+								<p>{mode.description}</p>
+								<span className="crowd-mode-action">
+									Open <ArrowRight size={16} />
+								</span>
+							</Link>
+						</div>
+					))}
+				</div>
+			</section>
+
+			<footer className="crowd-footer">
+				<span>YC Stack Auth Hackathon winner</span>
+				<span>MediaPipe · Socket.IO · Web Audio API</span>
+			</footer>
+		</main>
 	);
 }
