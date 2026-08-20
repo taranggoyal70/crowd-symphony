@@ -15,7 +15,7 @@ import { crowdTracks } from "@/lib/tracks";
 function AudienceContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const sessionId = searchParams.get("session");
+	const sessionId = searchParams.get("session")?.trim().toUpperCase() || null;
 	const joinTitleId = useId();
 	const roomCodeId = useId();
 	const [roomCode, setRoomCode] = useState("");
@@ -368,7 +368,7 @@ function AudienceContent() {
 						onSubmit={(event) => {
 							event.preventDefault();
 							const normalizedCode = roomCode.trim().toUpperCase();
-							if (normalizedCode)
+							if (normalizedCode.length >= 3)
 								router.push(
 									`/audience?session=${encodeURIComponent(normalizedCode)}`,
 								);
@@ -379,12 +379,17 @@ function AudienceContent() {
 							<input
 								id={roomCodeId}
 								value={roomCode}
-								onChange={(event) => setRoomCode(event.target.value)}
-								placeholder="CS-2025"
+								onChange={(event) =>
+									setRoomCode(event.target.value.toUpperCase())
+								}
+								placeholder="ABC123"
 								autoComplete="off"
+								autoCapitalize="characters"
+								minLength={3}
 								maxLength={12}
+								required
 							/>
-							<button type="submit" disabled={!roomCode.trim()}>
+							<button type="submit" disabled={roomCode.trim().length < 3}>
 								Join signal <ArrowRight size={18} />
 							</button>
 						</div>

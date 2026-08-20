@@ -8,14 +8,17 @@ import {
 	Users,
 	Volume2,
 	Wifi,
+	X,
 	Zap,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { handHeightToVolume, smoothVolume } from "@/lib/audio-mapping";
 import { getRealtimeState, postRealtimeMessage } from "@/lib/realtime";
 
 export default function ConductorPage() {
+	const joinDialogId = useId();
+	const joinDialogTitleId = useId();
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [isActive, setIsActive] = useState(false);
@@ -33,12 +36,23 @@ export default function ConductorPage() {
 	const latestVolumesRef = useRef({ leftVolume: 50, rightVolume: 50 });
 	const publishSequenceRef = useRef(0);
 
-	// Generate session ID on client-side only
+	// Generate a stable, shareable room code on the client.
 	useEffect(() => {
 		const urlSession = new URLSearchParams(window.location.search).get(
 			"session",
 		);
-		setSessionId(urlSession || Math.random().toString(36).substr(2, 9));
+		const nextSession =
+			urlSession?.trim().toUpperCase() ||
+			Math.random().toString(36).slice(2, 8).toUpperCase();
+
+		setSessionId(nextSession);
+		if (!urlSession) {
+			window.history.replaceState(
+				null,
+				"",
+				`/conductor?session=${nextSession}`,
+			);
+		}
 	}, []);
 
 	// Keep conductor-side user counts fresh while the session is open.
@@ -403,6 +417,8 @@ export default function ConductorPage() {
 
 							<button
 								onClick={() => setShowQR(!showQR)}
+								aria-expanded={showQR}
+								aria-controls={joinDialogId}
 								className="px-5 py-2 bg-white text-black font-semibold rounded-md hover:bg-zinc-200 transition flex items-center space-x-2"
 							>
 								<QrCode className="w-4 h-4" />
@@ -637,15 +653,33 @@ export default function ConductorPage() {
 						onClick={() => setShowQR(false)}
 					>
 						<motion.div
+							id={joinDialogId}
+							role="dialog"
+							aria-modal="true"
+							aria-labelledby={joinDialogTitleId}
 							initial={{ scale: 0.95 }}
 							animate={{ scale: 1 }}
 							exit={{ scale: 0.95 }}
-							className="bg-zinc-900 rounded-lg p-8 max-w-md w-full border border-zinc-800"
+							className="relative bg-zinc-900 rounded-lg p-8 max-w-md w-full border border-zinc-800"
 							onClick={(e) => e.stopPropagation()}
 						>
-							<h2 className="text-2xl font-bold text-white mb-6">
+							<button
+								type="button"
+								onClick={() => setShowQR(false)}
+								aria-label="Close join dialog"
+								className="absolute right-4 top-4 rounded-md p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
+							>
+								<X className="h-5 w-5" />
+							</button>
+							<h2
+								id={joinDialogTitleId}
+								className="text-2xl font-bold text-white mb-2"
+							>
 								Join Session
 							</h2>
+							<p className="mb-6 font-mono text-sm text-zinc-400">
+								Room {sessionId}
+							</p>
 
 							<div className="bg-white p-6 rounded-lg mb-6">
 								<QRCodeSVG

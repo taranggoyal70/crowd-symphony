@@ -5,7 +5,7 @@ import {
 	ArrowRight,
 	CircleDot,
 	Github,
-	MonitorUp,
+	QrCode,
 	Radio,
 	Smartphone,
 	Users,
@@ -18,32 +18,28 @@ const waveform = [
 	62, 36, 76, 52, 92, 64, 40, 74, 48, 86, 56, 32, 68, 44, 80,
 ];
 
-const modes = [
+const steps = [
 	{
-		href: "/host",
-		label: "Host the room",
-		description: "Create a room, choose the set, and project the crowd link.",
-		icon: MonitorUp,
-		tone: "coral",
-		meta: "Control desk",
-	},
-	{
-		href: "/conductor",
-		label: "Conduct live",
-		description:
-			"Use hand movement to shape volume across the room in real time.",
+		label: "Start conducting",
+		description: "Open the conductor desk and get one room code instantly.",
 		icon: WandSparkles,
-		tone: "lime",
-		meta: "Camera + gestures",
+		tone: "coral",
+		meta: "Step 1",
 	},
 	{
-		href: "/audience",
-		label: "Join the crowd",
+		label: "Share the room",
+		description: "Let the crowd scan the QR code or type the short room code.",
+		icon: QrCode,
+		tone: "lime",
+		meta: "Step 2",
+	},
+	{
+		label: "Raise your hands",
 		description:
-			"Enter a room code and turn your phone into part of the performance.",
-		icon: Smartphone,
+			"Shape the left and right channels while every phone follows live.",
+		icon: Users,
 		tone: "cyan",
-		meta: "No app required",
+		meta: "Step 3",
 	},
 ];
 
@@ -108,11 +104,13 @@ export default function Home() {
 						transition={{ delay: 0.22 }}
 						className="crowd-primary-actions"
 					>
-						<Link className="crowd-primary-button" href="/host">
-							<MonitorUp size={18} /> Start an event <ArrowRight size={17} />
+						<Link className="crowd-primary-button" href="/conductor">
+							<WandSparkles size={18} /> Start conducting{" "}
+							<ArrowRight size={17} />
 						</Link>
 						<Link className="crowd-text-link" href="/audience">
-							I have a room code <ArrowRight size={16} />
+							<Smartphone size={17} /> Join with a room code{" "}
+							<ArrowRight size={16} />
 						</Link>
 					</motion.div>
 				</div>
@@ -169,26 +167,20 @@ export default function Home() {
 
 			<section className="crowd-mode-strip">
 				<div className="crowd-section-heading">
-					<p>Choose your place in the room</p>
-					<h2>Three screens. One performance.</h2>
+					<p>How it works</p>
+					<h2>One simple flow.</h2>
 				</div>
 				<div className="crowd-mode-grid">
-					{modes.map((mode) => (
-						<div key={mode.href}>
-							<Link
-								className={`crowd-mode crowd-mode-${mode.tone}`}
-								href={mode.href}
-							>
-								<div className="crowd-mode-icon">
-									<mode.icon size={24} />
+					{steps.map((step) => (
+						<div key={step.label}>
+							<article className={`crowd-mode crowd-mode-${step.tone}`}>
+								<div className="crowd-mode-icon" aria-hidden="true">
+									<step.icon size={24} />
 								</div>
-								<span className="crowd-mode-meta">{mode.meta}</span>
-								<h3>{mode.label}</h3>
-								<p>{mode.description}</p>
-								<span className="crowd-mode-action">
-									Open <ArrowRight size={16} />
-								</span>
-							</Link>
+								<span className="crowd-mode-meta">{step.meta}</span>
+								<h3>{step.label}</h3>
+								<p>{step.description}</p>
+							</article>
 						</div>
 					))}
 				</div>
