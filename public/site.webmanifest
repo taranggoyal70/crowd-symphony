@@ -1,0 +1,50 @@
+{
+	"name": "Crowd Symphony",
+	"short_name": "CrowdSymphony",
+	"description": "Conduct an audience-powered music experience with hand gestures",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#090a0f",
+	"theme_color": "#090a0f",
+	"orientation": "portrait-primary",
+	"icons": [
+		{
+			"src": "/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	],
+	"categories": ["music", "entertainment", "productivity"],
+	"screenshots": [
+		{
+			"src": "/social-preview.png",
+			"sizes": "1200x630",
+			"type": "image/png",
+			"form_factor": "wide",
+			"label": "Crowd Symphony Home Page"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "Start Conducting",
+			"short_name": "Conduct",
+			"description": "Open the conductor desk",
+			"url": "/conductor",
+			"icons": [{ "src": "/icon-conduct.png", "sizes": "192x192" }]
+		},
+		{
+			"name": "Join Audience",
+			"short_name": "Join",
+			"description": "Join a session with a room code",
+			"url": "/audience",
+			"icons": [{ "src": "/icon-join.png", "sizes": "192x192" }]
+		}
+	]
+}
