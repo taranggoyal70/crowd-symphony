@@ -83,12 +83,28 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
+			<head>
+				<link rel="manifest" href="/site.webmanifest" />
+				<meta name="theme-color" content="#090a0f" />
+			</head>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
 				<SentryProvider>
 					<ErrorBoundary>{children}</ErrorBoundary>
 				</SentryProvider>
+				<script
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: Static service worker registration, not user-controlled
+					dangerouslySetInnerHTML={{
+						__html: `
+							if ('serviceWorker' in navigator) {
+								window.addEventListener('load', () => {
+									navigator.serviceWorker.register('/sw.js').catch(() => {});
+								});
+							}
+						`,
+					}}
+				/>
 			</body>
 		</html>
 	);
