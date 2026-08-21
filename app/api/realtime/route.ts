@@ -1,12 +1,17 @@
 import { getCache } from "@vercel/functions";
 import { NextResponse } from "next/server";
+import {
+	createMoment,
+	createSession,
+	getAudienceCounts,
+	getSessionByRoomCode,
+	joinSession,
+	logSessionEvent,
+	updateSession,
+} from "@/lib/db/sessions";
+import { errors, formatErrorResponse } from "@/lib/errors";
 
 type Section = "left" | "right";
-
-type AudienceMember = {
-	section: Section;
-	lastSeen: number;
-};
 
 type EffectMode = "symphony" | "bass-drop" | "strobe";
 type MomentKind = "pulse" | "left-drop" | "right-drop" | "blackout" | "finale";
@@ -18,7 +23,8 @@ type CrowdMoment = {
 	triggeredAt: number;
 };
 
-type ControlState = {
+type RealtimeState = {
+	type: "state";
 	leftVolume: number;
 	rightVolume: number;
 	conductorActive: boolean;
@@ -28,11 +34,7 @@ type ControlState = {
 	eventName: string;
 	effectMode: EffectMode;
 	activeMoment: CrowdMoment | null;
-};
-
-type AudienceState = {
-	audience: Record<string, AudienceMember>;
-	updatedAt: number;
+	userCount: { left: number; right: number; total: number };
 };
 
 type RealtimePostBody =
@@ -84,35 +86,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
 const cache = getCache({ namespace: "crowd-symphony" });
-const audienceTtlMs = 10_000;
+const _audienceTtlMs = 10_000;
 const sessionTtlSeconds = 60 * 60;
-
-function initialControlState(): ControlState {
-	return {
-		leftVolume: 50,
-		rightVolume: 50,
-		conductorActive: false,
-		updatedAt: Date.now(),
-		volumeSequence: 0,
-		selectedTrack: 0,
-		eventName: "Crowd Symphony",
-		effectMode: "symphony",
-		activeMoment: null,
-	};
-}
-
-function initialAudienceState(): AudienceState {
-	return {
-		audience: {},
-		updatedAt: Date.now(),
-	};
-}
 
 function controlKey(sessionId: string) {
 	return `control:${sessionId}`;
 }
 
-function audienceKey(sessionId: string) {
+function _audienceKey(sessionId: string) {
 	return `audience:${sessionId}`;
 }
 
@@ -130,7 +111,6 @@ function safeNumber(value: unknown, fallback: number) {
 	if (typeof value !== "number" || Number.isNaN(value)) {
 		return fallback;
 	}
-
 	return Math.max(0, Math.min(100, Math.round(value)));
 }
 
@@ -138,7 +118,6 @@ function safeSequence(value: unknown, fallback: number) {
 	if (typeof value !== "number" || !Number.isFinite(value)) {
 		return fallback;
 	}
-
 	return Math.max(0, Math.round(value));
 }
 
@@ -146,7 +125,6 @@ function safeTrackIndex(value: unknown, fallback: number) {
 	if (typeof value !== "number" || !Number.isFinite(value)) {
 		return fallback;
 	}
-
 	return Math.max(0, Math.min(4, Math.round(value)));
 }
 
@@ -154,7 +132,6 @@ function safeEventName(value: unknown, fallback: string) {
 	if (typeof value !== "string") {
 		return fallback;
 	}
-
 	const cleaned = value.trim().slice(0, 60);
 	return cleaned || fallback;
 }
@@ -177,7 +154,6 @@ function safeMomentLabel(value: unknown, fallback: string) {
 	if (typeof value !== "string") {
 		return fallback;
 	}
-
 	const cleaned = value.trim().slice(0, 42);
 	return cleaned || fallback;
 }
@@ -201,93 +177,68 @@ function effectForMoment(kind: MomentKind): EffectMode {
 	if (kind === "blackout" || kind === "finale") {
 		return "strobe";
 	}
-
 	if (kind === "left-drop" || kind === "right-drop") {
 		return "bass-drop";
 	}
-
 	return "symphony";
 }
 
-function pruneAudience(state: AudienceState) {
-	const now = Date.now();
-	for (const [clientId, member] of Object.entries(state.audience)) {
-		if (now - member.lastSeen > audienceTtlMs) {
-			delete state.audience[clientId];
-		}
-	}
-	return state;
-}
-
-function counts(state: AudienceState) {
-	let left = 0;
-	let right = 0;
-
-	for (const member of Object.values(state.audience)) {
-		if (member.section === "left") {
-			left += 1;
-		} else {
-			right += 1;
-		}
+function toRealtimeState(
+	session: Awaited<ReturnType<typeof getSessionByRoomCode>>,
+	audienceCounts: { left: number; right: number; total: number },
+): RealtimeState {
+	if (!session) {
+		throw errors.notFound("Session");
 	}
 
 	return {
-		left,
-		right,
-		total: left + right,
+		type: "state",
+		leftVolume: session.left_volume,
+		rightVolume: session.right_volume,
+		conductorActive: session.conductor_active,
+		updatedAt: new Date(session.updated_at).getTime(),
+		volumeSequence: session.volume_sequence,
+		selectedTrack: session.selected_track,
+		eventName: session.event_name,
+		effectMode: session.effect_mode,
+		activeMoment: session.active_moment_id
+			? {
+					id: session.active_moment_id,
+					label: session.active_moment_label ?? "",
+					kind: session.active_moment_kind as MomentKind,
+					triggeredAt: session.active_moment_triggered_at ?? 0,
+				}
+			: null,
+		userCount: audienceCounts,
 	};
 }
 
-function responseFor(control: ControlState, audience: AudienceState) {
-	const prunedAudience = pruneAudience(audience);
-
-	return NextResponse.json({
-		type: "state",
-		leftVolume: control.leftVolume,
-		rightVolume: control.rightVolume,
-		conductorActive: control.conductorActive,
-		updatedAt: Math.max(control.updatedAt, prunedAudience.updatedAt),
-		volumeSequence: control.volumeSequence,
-		selectedTrack: control.selectedTrack,
-		eventName: control.eventName,
-		effectMode: control.effectMode,
-		activeMoment: control.activeMoment,
-		userCount: counts(prunedAudience),
-	});
-}
-
-async function readControl(sessionId: string) {
+async function readControlFromCache(
+	sessionId: string,
+): Promise<RealtimeState | null> {
 	const cached = await cache.get(controlKey(sessionId));
-
-	if (
-		cached &&
-		typeof cached === "object" &&
-		"leftVolume" in cached &&
-		"rightVolume" in cached
-	) {
+	if (cached && typeof cached === "object" && "leftVolume" in cached) {
+		const c = cached as {
+			leftVolume: number;
+			rightVolume: number;
+			conductorActive: boolean;
+			updatedAt: number;
+			volumeSequence: number;
+			selectedTrack: number;
+			eventName: string;
+			effectMode: EffectMode;
+			activeMoment: CrowdMoment | null;
+		};
 		return {
-			...initialControlState(),
-			...(cached as Partial<ControlState>),
+			type: "state",
+			...c,
+			userCount: { left: 0, right: 0, total: 0 },
 		};
 	}
-
-	return initialControlState();
+	return null;
 }
 
-async function readAudience(sessionId: string) {
-	const cached = await cache.get(audienceKey(sessionId));
-
-	if (cached && typeof cached === "object" && "audience" in cached) {
-		return {
-			...initialAudienceState(),
-			...(cached as Partial<AudienceState>),
-		};
-	}
-
-	return initialAudienceState();
-}
-
-async function writeControl(sessionId: string, state: ControlState) {
+async function writeControlToCache(sessionId: string, state: RealtimeState) {
 	await cache.set(controlKey(sessionId), state, {
 		name: `Crowd Symphony control ${sessionId}`,
 		tags: [`control:${sessionId}`],
@@ -295,134 +246,281 @@ async function writeControl(sessionId: string, state: ControlState) {
 	});
 }
 
-async function writeAudience(sessionId: string, state: AudienceState) {
-	await cache.set(audienceKey(sessionId), state, {
-		name: `Crowd Symphony audience ${sessionId}`,
-		tags: [`audience:${sessionId}`],
-		ttl: sessionTtlSeconds,
+async function getOrCreateSession(sessionId: string) {
+	// Try cache first for ultra-fast reads
+	const cached = await readControlFromCache(sessionId);
+	if (cached) {
+		return cached;
+	}
+
+	// Fall back to database
+	let session = await getSessionByRoomCode(sessionId);
+	if (!session) {
+		// Auto-create session if it doesn't exist (for ad-hoc rooms)
+		session = await createSession(sessionId);
+	}
+
+	// Sync to cache
+	const state: RealtimeState = {
+		type: "state",
+		leftVolume: session.left_volume,
+		rightVolume: session.right_volume,
+		conductorActive: session.conductor_active,
+		updatedAt: new Date(session.updated_at).getTime(),
+		volumeSequence: session.volume_sequence,
+		selectedTrack: session.selected_track,
+		eventName: session.event_name,
+		effectMode: session.effect_mode,
+		activeMoment: session.active_moment_id
+			? {
+					id: session.active_moment_id,
+					label: session.active_moment_label ?? "",
+					kind: session.active_moment_kind as MomentKind,
+					triggeredAt: session.active_moment_triggered_at ?? 0,
+				}
+			: null,
+		userCount: { left: 0, right: 0, total: 0 },
+	};
+	await writeControlToCache(sessionId, state);
+	return state;
+}
+
+async function writeControl(
+	sessionId: string,
+	updates: Partial<RealtimeState>,
+) {
+	// Update cache
+	const cached = await readControlFromCache(sessionId);
+	const current: RealtimeState = cached ?? {
+		type: "state",
+		leftVolume: 50,
+		rightVolume: 50,
+		conductorActive: false,
+		updatedAt: Date.now(),
+		volumeSequence: 0,
+		selectedTrack: 0,
+		eventName: "Crowd Symphony",
+		effectMode: "symphony",
+		activeMoment: null,
+		userCount: { left: 0, right: 0, total: 0 },
+	};
+	const merged: RealtimeState = {
+		...current,
+		...updates,
+		updatedAt: Date.now(),
+	};
+	await writeControlToCache(sessionId, merged);
+
+	// Persist to database
+	await updateSession(sessionId, {
+		left_volume: merged.leftVolume,
+		right_volume: merged.rightVolume,
+		conductor_active: merged.conductorActive,
+		volume_sequence: merged.volumeSequence,
+		selected_track: merged.selectedTrack,
+		event_name: merged.eventName,
+		effect_mode: merged.effectMode,
+		active_moment_id: merged.activeMoment?.id ?? null,
+		active_moment_label: merged.activeMoment?.label ?? null,
+		active_moment_kind: merged.activeMoment?.kind ?? null,
+		active_moment_triggered_at: merged.activeMoment?.triggeredAt ?? null,
+		updated_at: new Date().toISOString(),
 	});
 }
 
 export async function GET(request: Request) {
-	const url = new URL(request.url);
-	const sessionId = url.searchParams.get("session");
+	try {
+		const url = new URL(request.url);
+		const sessionId = url.searchParams.get("session");
 
-	if (!isValidSessionId(sessionId)) {
-		return NextResponse.json(
-			{ error: "Missing or invalid session." },
-			{ status: 400 },
-		);
-	}
-
-	const [control, audience] = await Promise.all([
-		readControl(sessionId),
-		readAudience(sessionId),
-	]);
-	const prunedAudience = pruneAudience(audience);
-	await writeAudience(sessionId, prunedAudience);
-
-	return responseFor(control, prunedAudience);
-}
-
-export async function POST(request: Request) {
-	const body = (await request
-		.json()
-		.catch(() => null)) as RealtimePostBody | null;
-
-	if (!body || !isValidSessionId(body.sessionId)) {
-		return NextResponse.json(
-			{ error: "Missing or invalid session." },
-			{ status: 400 },
-		);
-	}
-
-	if (body.role === "conductor") {
-		const control = await readControl(body.sessionId);
-
-		if (body.type === "volumeChange") {
-			const sequence = safeSequence(body.sequence, control.volumeSequence + 1);
-			if (sequence >= control.volumeSequence) {
-				control.leftVolume = safeNumber(body.leftVolume, control.leftVolume);
-				control.rightVolume = safeNumber(body.rightVolume, control.rightVolume);
-				control.volumeSequence = sequence;
-			}
-		}
-
-		if (body.type === "conductorStart") {
-			control.conductorActive = true;
-		}
-
-		if (body.type === "conductorStop") {
-			control.conductorActive = false;
-		}
-
-		control.updatedAt = Date.now();
-		await writeControl(body.sessionId, control);
-
-		return responseFor(control, await readAudience(body.sessionId));
-	}
-
-	if (body.role === "host") {
-		const control = await readControl(body.sessionId);
-
-		if (body.type === "hostUpdate") {
-			control.selectedTrack = safeTrackIndex(
-				body.selectedTrack,
-				control.selectedTrack,
-			);
-			control.eventName = safeEventName(body.eventName, control.eventName);
-			control.effectMode = isEffectMode(body.effectMode)
-				? body.effectMode
-				: control.effectMode;
-		}
-
-		if (body.type === "showStart") {
-			control.conductorActive = true;
-		}
-
-		if (body.type === "showStop") {
-			control.conductorActive = false;
-		}
-
-		if (body.type === "triggerMoment") {
-			const kind = isMomentKind(body.moment?.kind) ? body.moment.kind : "pulse";
-			control.activeMoment = {
-				id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-				label: safeMomentLabel(body.moment?.label, defaultMomentLabel(kind)),
-				kind,
-				triggeredAt: Date.now(),
-			};
-			control.conductorActive = true;
-			control.effectMode = effectForMoment(kind);
-		}
-
-		control.updatedAt = Date.now();
-		await writeControl(body.sessionId, control);
-
-		return responseFor(control, await readAudience(body.sessionId));
-	}
-
-	if (body.role === "audience") {
-		if (!body.clientId || !isSection(body.section)) {
+		if (!isValidSessionId(sessionId)) {
 			return NextResponse.json(
-				{ error: "Missing or invalid audience identity." },
+				{ error: "Missing or invalid session." },
 				{ status: 400 },
 			);
 		}
 
-		const audience = pruneAudience(await readAudience(body.sessionId));
-		audience.audience[body.clientId] = {
-			section: body.section,
-			lastSeen: Date.now(),
-		};
-		audience.updatedAt = Date.now();
-		await writeAudience(body.sessionId, audience);
+		// Get session from cache/db
+		const session = await getSessionByRoomCode(sessionId);
+		if (!session) {
+			return NextResponse.json(
+				{ error: "Session not found or expired." },
+				{ status: 404 },
+			);
+		}
 
-		return responseFor(await readControl(body.sessionId), audience);
+		// Get live audience counts
+		const audienceCounts = await getAudienceCounts(session.id);
+
+		return NextResponse.json(toRealtimeState(session, audienceCounts));
+	} catch (error) {
+		const { response, statusCode } = formatErrorResponse(error);
+		return NextResponse.json(response, { status: statusCode });
 	}
+}
 
-	return NextResponse.json(
-		{ error: "Unsupported realtime message." },
-		{ status: 400 },
-	);
+export async function POST(request: Request) {
+	try {
+		const body = (await request
+			.json()
+			.catch(() => null)) as RealtimePostBody | null;
+
+		if (!body || !isValidSessionId(body.sessionId)) {
+			return NextResponse.json(
+				{ error: "Missing or invalid session." },
+				{ status: 400 },
+			);
+		}
+
+		// Ensure session exists
+		await getOrCreateSession(body.sessionId);
+
+		if (body.role === "conductor") {
+			const current = await readControlFromCache(body.sessionId);
+			if (!current) {
+				return NextResponse.json(
+					{ error: "Session not initialized" },
+					{ status: 404 },
+				);
+			}
+
+			if (body.type === "volumeChange") {
+				const sequence = safeSequence(
+					body.sequence,
+					current.volumeSequence + 1,
+				);
+				if (sequence >= current.volumeSequence) {
+					await writeControl(body.sessionId, {
+						leftVolume: safeNumber(body.leftVolume, current.leftVolume),
+						rightVolume: safeNumber(body.rightVolume, current.rightVolume),
+						volumeSequence: sequence,
+					});
+				}
+			}
+
+			if (body.type === "conductorStart") {
+				await writeControl(body.sessionId, { conductorActive: true });
+				await logSessionEvent(body.sessionId, "conductor_started");
+			}
+
+			if (body.type === "conductorStop") {
+				await writeControl(body.sessionId, { conductorActive: false });
+				await logSessionEvent(body.sessionId, "conductor_stopped");
+			}
+
+			// Return updated state
+			const session = await getSessionByRoomCode(body.sessionId);
+			const audienceCounts = session
+				? await getAudienceCounts(session.id)
+				: { left: 0, right: 0, total: 0 };
+			return NextResponse.json(toRealtimeState(session, audienceCounts));
+		}
+
+		if (body.role === "host") {
+			const current = await readControlFromCache(body.sessionId);
+			if (!current) {
+				return NextResponse.json(
+					{ error: "Session not initialized" },
+					{ status: 404 },
+				);
+			}
+
+			if (body.type === "hostUpdate") {
+				await writeControl(body.sessionId, {
+					selectedTrack: safeTrackIndex(
+						body.selectedTrack,
+						current.selectedTrack,
+					),
+					eventName: safeEventName(body.eventName, current.eventName),
+					effectMode: isEffectMode(body.effectMode)
+						? body.effectMode
+						: current.effectMode,
+				});
+				await logSessionEvent(body.sessionId, "host_update", {
+					selectedTrack: body.selectedTrack,
+					eventName: body.eventName,
+					effectMode: body.effectMode,
+				});
+			}
+
+			if (body.type === "showStart") {
+				await writeControl(body.sessionId, { conductorActive: true });
+				await logSessionEvent(body.sessionId, "show_started");
+			}
+
+			if (body.type === "showStop") {
+				await writeControl(body.sessionId, { conductorActive: false });
+				await logSessionEvent(body.sessionId, "show_stopped");
+			}
+
+			if (body.type === "triggerMoment") {
+				const kind = isMomentKind(body.moment?.kind)
+					? body.moment.kind
+					: "pulse";
+				const moment = {
+					id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+					label: safeMomentLabel(body.moment?.label, defaultMomentLabel(kind)),
+					kind,
+					triggeredAt: Date.now(),
+				};
+				await writeControl(body.sessionId, {
+					activeMoment: moment,
+					conductorActive: true,
+					effectMode: effectForMoment(kind),
+				});
+
+				// Persist moment to database
+				await createMoment(
+					body.sessionId,
+					moment.label,
+					moment.kind,
+					undefined,
+					current.leftVolume,
+				);
+				await logSessionEvent(body.sessionId, "moment_triggered", {
+					kind: moment.kind,
+					label: moment.label,
+				});
+			}
+
+			const session = await getSessionByRoomCode(body.sessionId);
+			const audienceCounts = session
+				? await getAudienceCounts(session.id)
+				: { left: 0, right: 0, total: 0 };
+			return NextResponse.json(toRealtimeState(session, audienceCounts));
+		}
+
+		if (body.role === "audience") {
+			if (!body.clientId || !isSection(body.section)) {
+				return NextResponse.json(
+					{ error: "Missing or invalid audience identity." },
+					{ status: 400 },
+				);
+			}
+
+			// Join/heartbeat
+			await joinSession(body.sessionId, body.clientId, body.section);
+			await logSessionEvent(
+				body.sessionId,
+				"audience_heartbeat",
+				{ section: body.section },
+				body.clientId,
+				body.section,
+			);
+
+			const session = await getSessionByRoomCode(body.sessionId);
+			const audienceCounts = session
+				? await getAudienceCounts(session.id)
+				: { left: 0, right: 0, total: 0 };
+			return NextResponse.json(toRealtimeState(session, audienceCounts));
+		}
+
+		return NextResponse.json(
+			{ error: "Unsupported realtime message." },
+			{ status: 400 },
+		);
+	} catch (error) {
+		const { response, statusCode } = formatErrorResponse(error);
+		return NextResponse.json(response, { status: statusCode });
+	}
 }
