@@ -210,6 +210,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
+## 📚 **Documentation**
+
+- [Production Deployment Guide](DEPLOYMENT.md) - Complete deployment instructions
+- [Project Context](CONTEXT.md) - Domain language and terminology
+- [Development Setup](#-development-setup)
+
 ## 📝 **License**
 
 MIT License - feel free to use this project for any purpose!
